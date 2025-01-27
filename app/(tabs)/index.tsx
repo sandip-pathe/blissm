@@ -1,74 +1,275 @@
-import { Image, StyleSheet, Platform } from 'react-native';
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+} from "react-native";
+import { useSQLiteContext } from "expo-sqlite";
+import Colors from "@/constants/Colors";
+import { getAlljournalSession } from "@/database/sqlite"; // Custom database functions
+import {
+  FontAwesome6,
+  Ionicons,
+  MaterialCommunityIcons,
+} from "@expo/vector-icons";
+import { TextInput } from "react-native-gesture-handler";
+import { useRouter } from "expo-router";
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+//TODO: add search functionality
 
-export default function HomeScreen() {
+const JournalDashboardScreen: React.FC = () => {
+  const db = useSQLiteContext();
+  const [journalEntries, setJournalEntries] = useState<any[]>([]);
+  const router = useRouter();
+  const [viewMode, setViewMode] = useState("grid");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const entries = await getAlljournalSession(db);
+        setJournalEntries(entries);
+      } catch (error) {
+        console.error("Failed to load journal entries:", error);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12'
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <>
+      <ScrollView contentContainerStyle={styles.journalList}>
+        <View style={styles.container}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              alignContent: "center",
+              gap: 5,
+              marginBottom: 20,
+            }}
+          >
+            <TouchableOpacity style={styles.searchInput}>
+              <TextInput
+                placeholder="Search names, dates . . ."
+                cursorColor={Colors.light}
+                placeholderTextColor={Colors.light}
+                style={{ flex: 1, fontSize: 18 }}
+              />
+              <MaterialCommunityIcons
+                onPress={() =>
+                  setViewMode(viewMode === "list" ? "grid" : "list")
+                }
+                name={viewMode === "list" ? "view-grid" : "view-agenda"}
+                color={Colors.light}
+                size={24}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{
+                padding: 10,
+                paddingRight: 0,
+                borderRadius: 25,
+              }}
+              onPress={() => {
+                router.navigate(`/(modals)/settings`);
+              }}
+            >
+              <Ionicons name="settings" size={24} color="white" />
+            </TouchableOpacity>
+          </View>
+          {loading ? (
+            <ActivityIndicator size="large" color={Colors.primary} />
+          ) : journalEntries.length ? (
+            viewMode === "list" ? (
+              journalEntries.map((entry) => (
+                <TouchableOpacity
+                  key={entry.id}
+                  style={styles.journalItem}
+                  onPress={() => router.navigate(`../(screens)/${entry.id}`)}
+                >
+                  <Text style={styles.journalDate}>{entry.id}</Text>
+                  <Text style={styles.journalDate}>
+                    {entry.lastBotResponse}
+                  </Text>
+                </TouchableOpacity>
+              ))
+            ) : (
+              <View style={styles.gridContainer}>
+                <View style={styles.column}>
+                  {journalEntries
+                    .filter((_, index) => index % 2 === 0)
+                    .map((entry) => (
+                      <TouchableOpacity
+                        key={entry.id}
+                        style={styles.gridItem}
+                        onPress={() =>
+                          router.navigate(`../(screens)/${entry.id}`)
+                        }
+                      >
+                        <Text style={styles.journalDate}>{entry.id}</Text>
+                        <Text style={styles.journalDate}>
+                          {entry.lastBotResponse}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                </View>
+                <View style={styles.column}>
+                  {journalEntries
+                    .filter((_, index) => index % 2 !== 0)
+                    .map((entry) => (
+                      <TouchableOpacity
+                        key={entry.id}
+                        style={styles.gridItem}
+                        onPress={() =>
+                          router.navigate(`../(screens)/${entry.id}`)
+                        }
+                      >
+                        <Text style={styles.journalDate}>{entry.id}</Text>
+                        <Text style={styles.journalDate}>
+                          {entry.lastBotResponse}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                </View>
+              </View>
+            )
+          ) : (
+            <Text style={styles.noEntriesText}>No journals found.</Text>
+          )}
+        </View>
+      </ScrollView>
+      <TouchableOpacity
+        style={styles.writeEntryButton}
+        onPress={() => {
+          router.navigate(`../(screens)/new`);
+        }}
+      >
+        <FontAwesome6 name="edit" size={20} color={Colors.dark} />
+        <Text style={styles.buttonText}>Write Entry</Text>
+      </TouchableOpacity>
+    </>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  journalList: {
+    marginBottom: 20,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  container: {
+    flex: 1,
+    paddingHorizontal: 16,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 15,
+  },
+  streakRow: {
+    flexDirection: "row",
+    gap: 10,
+    alignItems: "center",
+  },
+  header: {
+    fontSize: 24,
+    color: Colors.lightPink,
+    fontWeight: "900",
+    marginBottom: 20,
+  },
+  searchInput: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    borderRadius: 20,
+    backgroundColor: Colors.darkLight,
+    flex: 1,
+  },
+  writeEntryButton: {
+    position: "absolute",
+    bottom: 16,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    gap: 5,
+    padding: 10,
+    borderRadius: 10,
+    backgroundColor: "#E8F9FF",
+  },
+  buttonText: {
+    color: Colors.dark,
+    fontWeight: "500",
+    textAlign: "center",
+  },
+  journalItem: {
+    borderColor: Colors.primary,
+    borderWidth: 1,
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 15,
+  },
+  journalDate: {
+    fontSize: 16,
+    color: Colors.light,
+  },
+  journalSummary: {
+    color: Colors.greyLight,
+    marginTop: 8,
+  },
+  viewButton: {
+    marginTop: 10,
+    backgroundColor: Colors.green,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 4,
+  },
+  viewButtonText: {
+    color: Colors.light,
+    fontSize: 14,
+  },
+  noEntriesText: {
+    color: Colors.light,
+    fontSize: 16,
+    textAlign: "center",
+  },
+  selectedJournalContainer: {
+    backgroundColor: Colors.lightPink,
+    padding: 15,
+    borderRadius: 8,
+    marginTop: 20,
+  },
+  selectedJournalDate: {
+    fontSize: 18,
+    color: Colors.light,
+    fontWeight: "bold",
+  },
+  selectedJournalSummary: {
+    color: Colors.greyLight,
+    marginTop: 10,
+    fontSize: 16,
+  },
+  gridContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  column: {
+    flex: 1,
+    flexDirection: "column",
+  },
+  gridItem: {
+    padding: 10,
+    borderColor: Colors.primary,
+    borderWidth: 1,
+    marginVertical: 5,
+    borderRadius: 8,
+    marginBottom: 10,
   },
 });
+
+export default JournalDashboardScreen;
