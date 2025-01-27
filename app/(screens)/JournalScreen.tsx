@@ -117,7 +117,7 @@ const JournalScreen: React.FC = () => {
               db,
               parseInt(journalId),
               lastUserInput,
-              lastBotPrompt
+              prompts[0]
             );
             console.log("Saved with default prompt");
           } else if (!lastUserInput && lastBotPrompt) {

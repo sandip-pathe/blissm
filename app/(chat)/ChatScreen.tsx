@@ -7,7 +7,6 @@ import {
   Text,
   ActivityIndicator,
   TouchableOpacity,
-  ScrollView,
 } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { Stack, useLocalSearchParams } from "expo-router";
@@ -52,7 +51,6 @@ const ChatPage = () => {
   const [loading, setLoading] = useState(false);
   const [chatId, setChatId] = useState(0);
   const [messages, setMessages] = useState<Message[]>([]);
-  const scrollRef = useRef<ScrollView>(null);
   const db = useSQLiteContext();
   const [loadingInitialization, setLoadingInitialization] = useState(false);
   const [summaryContext, setSummaryContext] = useState("");
@@ -128,7 +126,6 @@ const ChatPage = () => {
 
     loadMessages();
     setLoadingInitialization(false);
-    scrollRef.current?.scrollToEnd({ animated: true });
   }, [chatId]);
 
   const fetchChatGPTCompletion = async (prompt: string) => {
@@ -254,7 +251,6 @@ const ChatPage = () => {
       console.error("Error fetching completion:", error);
     } finally {
       setLoading(false);
-      scrollRef.current?.scrollToEnd({ animated: true });
     }
   };
 
@@ -299,6 +295,9 @@ const ChatPage = () => {
       <View style={defaultStyles.pageContainer}>
         <View style={styles.page}>
           <FlashList
+            onContentSizeChange={() => {
+              console.log("Content size changed");
+            }}
             data={messages}
             renderItem={({ item }) => <ChatMessage {...item} />}
             estimatedItemSize={400}

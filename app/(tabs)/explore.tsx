@@ -276,7 +276,11 @@ const ChatDashboardScreen: React.FC = () => {
             )
           ) : (
             <View style={styles.offlineContainer}>
-              <MaterialIcons name="wifi-off" size={80} color={Colors.light} />
+              <MaterialIcons
+                name="wifi-off"
+                size={80}
+                color={Colors.lightPink}
+              />
               <Text style={styles.title}>Oops! You're Offline</Text>
               <Text style={styles.subtext}>
                 Looks like your internet took a break, but your old chatbots are
