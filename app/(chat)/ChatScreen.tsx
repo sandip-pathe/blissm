@@ -7,6 +7,7 @@ import {
   Text,
   ActivityIndicator,
   TouchableOpacity,
+  Keyboard,
 } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { Stack, useLocalSearchParams } from "expo-router";
@@ -56,6 +57,22 @@ const ChatPage = () => {
   const [summaryContext, setSummaryContext] = useState("");
   let { id: personaId } = useLocalSearchParams<{ id: string }>();
   const [title, setTitle] = useState("Blissm");
+  const listRef = useRef<FlashList<Message>>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener("keyboardDidShow", (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSubscription = Keyboard.addListener("keyboardDidHide", () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
 
   useEffect(() => {
     setLoadingInitialization(true);
@@ -187,6 +204,14 @@ const ChatPage = () => {
     }
   };
 
+  useEffect(() => {
+    if (messages.length > 0) {
+      setTimeout(() => {
+        listRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  }, [messages, keyboardHeight]);
+
   const summarize = async (
     prompt: string,
     response: string,
@@ -293,30 +318,31 @@ const ChatPage = () => {
         </View>
       )}
       <View style={defaultStyles.pageContainer}>
-        <View style={styles.page}>
-          <FlashList
-            onContentSizeChange={() => {
-              console.log("Content size changed");
-            }}
-            data={messages}
-            renderItem={({ item }) => <ChatMessage {...item} />}
-            estimatedItemSize={400}
-            contentContainerStyle={styles.contentContainer}
-            keyboardDismissMode="on-drag"
-            ListFooterComponent={
-              loading ? (
-                <View style={styles.loading}>
-                  <ActivityIndicator size="large" color={Colors.darkColor} />
-                </View>
-              ) : null
-            }
-          />
-        </View>
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
-          keyboardVerticalOffset={70}
+          keyboardVerticalOffset={80}
           style={styles.inputContainer}
         >
+          <View style={styles.page}>
+            <FlashList
+              showsVerticalScrollIndicator
+              ref={listRef}
+              data={messages}
+              renderItem={({ item }) => <ChatMessage {...item} />}
+              estimatedItemSize={400}
+              contentContainerStyle={{
+                paddingTop: 10,
+              }}
+              keyboardDismissMode="interactive"
+              ListFooterComponent={
+                loading ? (
+                  <View style={styles.loading}>
+                    <ActivityIndicator size="large" color={Colors.darkColor} />
+                  </View>
+                ) : null
+              }
+            />
+          </View>
           {messages.length === 0 && (
             <MessageIdeas onSelectCard={getCompletion} />
           )}
@@ -336,15 +362,8 @@ const styles = StyleSheet.create({
   page: {
     flex: 1,
   },
-  contentContainer: {
-    paddingBottom: 60,
-    paddingTop: 30,
-  },
   inputContainer: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    width: "100%",
+    flex: 1,
   },
   loading: {
     justifyContent: "center",
