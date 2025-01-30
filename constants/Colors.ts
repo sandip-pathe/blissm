@@ -1,6 +1,6 @@
 export default {
-  primary: '#4092AD',
-  lime: '#D7FFD4',
+  primary: '#F8F9FA',
+  lime: '#B4A6D5',
   pink: '#F655FF',
   brown: '#29271D',
   sky: '#E5EDFF',

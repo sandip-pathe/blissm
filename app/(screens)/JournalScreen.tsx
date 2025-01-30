@@ -28,6 +28,7 @@ import {
 import { useSQLiteContext } from "expo-sqlite";
 import { useFocusEffect } from "@react-navigation/native";
 import PromptsModal from "../(modals)/promptsModal";
+import BottomBar from "@/components/JournalBottomMenuBar";
 
 const JournalScreen: React.FC = () => {
   const scrollRef = useRef<ScrollView>(null);
@@ -45,6 +46,9 @@ const JournalScreen: React.FC = () => {
   const [loadingInitialization, setLoadingInitialization] = useState(true);
   const [session, setSession] = useState<any>();
   const [showPromptsModal, setShowPromptsModal] = useState(false);
+  const [backgroundColor, setBackgroundColor] = useState<string>(
+    Colors.lightPink
+  );
 
   const handlePromptSelect = (prompt: string) => {
     prompts[0] = prompt;
@@ -286,6 +290,14 @@ const JournalScreen: React.FC = () => {
     }
   };
 
+  const handleBackgroundColorChange = (color: string) => {
+    // Update the background color of the journal screen
+    // You can use state or a context to manage the background color
+    console.log("Selected color:", color);
+    // Example: Update a state variable for background color
+    setBackgroundColor(color);
+  };
+
   return (
     <>
       <Stack.Screen
@@ -324,7 +336,7 @@ const JournalScreen: React.FC = () => {
         onClose={() => setShowPromptsModal(false)}
         onSelectPrompt={handlePromptSelect}
       />
-      <View style={[styles.container]}>
+      <View style={[styles.container, { backgroundColor }]}>
         {loadingInitialization ? (
           <ActivityIndicator
             size="large"
@@ -370,6 +382,7 @@ const JournalScreen: React.FC = () => {
             <View style={styles.spacer}></View>
           </ScrollView>
         )}
+        <BottomBar onChangeBackgroundColor={handleBackgroundColorChange} />
       </View>
     </>
   );

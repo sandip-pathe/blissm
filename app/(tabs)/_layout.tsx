@@ -37,19 +37,6 @@ export default function AppLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="play"
-        options={{
-          title: "Journal",
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? "chatbox" : "chatbox-outline"}
-              size={28}
-              color={color}
-            />
-          ),
-        }}
-      />
     </Tabs>
   );
 }
