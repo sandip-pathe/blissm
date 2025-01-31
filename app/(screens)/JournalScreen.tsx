@@ -306,7 +306,11 @@ const JournalScreen: React.FC = () => {
               >
                 <Ionicons name="arrow-back" size={24} color={Colors.light} />
                 <Text style={styles.triggerText}>
-                  {new Date().toLocaleDateString()}
+                  {new Date().toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    weekday: "short",
+                  })}
                 </Text>
               </View>
               <TouchableOpacity
@@ -317,7 +321,7 @@ const JournalScreen: React.FC = () => {
                     : null,
                 ]}
                 onPress={handleTrigger}
-                disabled={loadingPrompt && lastInput.length == 0}
+                disabled={loadingPrompt || lastInput.length == 0}
               >
                 {loadingPrompt ? (
                   <ActivityIndicator size="small" color={Colors.light} />

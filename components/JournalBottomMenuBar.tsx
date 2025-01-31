@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   TouchableOpacity,
@@ -15,45 +15,76 @@ interface BottomBarProps {
   onChangeBackgroundColor: (color: string) => void;
 }
 
-const BottomBar: React.FC<BottomBarProps> = ({ onChangeBackgroundColor }) => {
-  const [backgroundModalVisible, setBackgroundModalVisible] = useState(false);
+const darkColors = [
+  "#1E1E1E",
+  "#222831",
+  "#0B3D91",
+  "#0E4D45",
+  "#172E15",
+  "#102542",
+  "#394867",
+  "#3A2A5E",
+  "#4B0082",
+  "#5D3FD3",
+  "#6A0DAD",
+  "#301934",
+  "#7D0633",
+  "#8B0000",
+  "#A52A2A",
+  "#5E2129",
+  "#943B54",
+  "#B8860B",
+  "#A97142",
+  "#C67C48",
+  "#8B4513",
+  "#D4A017",
+  "#556B2F",
+  "#3B5323",
+  "#2C3531",
+  "#422A4C",
+  "#264E36",
+  "#191919",
+  "#242424",
+  "#485053",
+];
 
-  // Calculate the width of each color box to fit 4 items per row
-  const screenWidth = Dimensions.get("window").width;
-  const colorBoxWidth = (screenWidth - 80) / 4 - 10; // 80 = paddingHorizontal * 2, 10 = marginHorizontal
+const BottomBar: React.FC<BottomBarProps> = ({ onChangeBackgroundColor }) => {
+  const [modalVisible, setModalVisible] = useState(false);
+  const colorBoxWidth = (Dimensions.get("window").width - 32) / 5 - 10;
+
+  const handleColorChange = useCallback(
+    (color: string) => {
+      onChangeBackgroundColor(color);
+      setModalVisible(false);
+    },
+    [onChangeBackgroundColor]
+  );
 
   return (
     <>
       <View style={styles.bottomBar}>
         <TouchableOpacity
           style={styles.iconButton}
-          onPress={() => setBackgroundModalVisible(true)}
+          onPress={() => setModalVisible(true)}
         >
-          <Ionicons name="color-palette-outline" size={24} color="white" />
+          <Ionicons name="color-palette-outline" size={35} color="white" />
         </TouchableOpacity>
       </View>
-      <Modal visible={backgroundModalVisible} transparent>
-        <View style={styles.container}>
+
+      <Modal visible={modalVisible} transparent animationType="slide">
+        <View style={styles.modalContainer}>
           <View style={styles.handle} />
           <TouchableOpacity
             style={styles.closeButton}
-            onPress={() => setBackgroundModalVisible(false)}
+            onPress={() => setModalVisible(false)}
           >
             <Ionicons name="close-sharp" size={30} color={Colors.light} />
           </TouchableOpacity>
           <Text style={styles.modalTitle}>Choose Background Color</Text>
+
           <FlatList
-            data={[
-              "#121212",
-              "#395B64",
-              "#0B3D91",
-              "#0E4D45",
-              "#172E15",
-              "#323232",
-              "#000101",
-              "#485053",
-            ]}
-            numColumns={4}
+            data={darkColors}
+            numColumns={5}
             contentContainerStyle={styles.flatListContainer}
             renderItem={({ item }) => (
               <TouchableOpacity
@@ -61,13 +92,10 @@ const BottomBar: React.FC<BottomBarProps> = ({ onChangeBackgroundColor }) => {
                   styles.colorBox,
                   { backgroundColor: item, width: colorBoxWidth },
                 ]}
-                onPress={() => {
-                  onChangeBackgroundColor(item);
-                  setBackgroundModalVisible(false);
-                }}
+                onPress={() => handleColorChange(item)}
               />
             )}
-            keyExtractor={(item, index) => index.toString()}
+            keyExtractor={(item) => item}
           />
         </View>
       </Modal>
@@ -90,7 +118,7 @@ const styles = StyleSheet.create({
     padding: 7,
     borderRadius: 50,
   },
-  container: {
+  modalContainer: {
     position: "absolute",
     bottom: 0,
     left: 0,
@@ -98,8 +126,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.greyLight,
     borderTopLeftRadius: 25,
     borderTopRightRadius: 25,
-    paddingHorizontal: 30,
-    paddingVertical: 20,
+    padding: 16,
   },
   handle: {
     width: 80,

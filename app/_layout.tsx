@@ -17,17 +17,12 @@ import {
 import { migrateDbIfNeeded } from "@/database/sqlite";
 import { AuthProvider } from "@/components/authContext";
 
-export {
-  // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
-} from "expo-router";
+export { ErrorBoundary } from "expo-router";
 
 export const unstable_settings = {
-  // Ensure that reloading on `/modal` keeps a back button present.
-  initialRouteName: "(tabs)/",
+  initialRouteName: "(modals)/login",
 };
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
 const RootLayout: React.FC = () => {
@@ -47,21 +42,21 @@ const RootLayout: React.FC = () => {
 const RootLayoutNav: React.FC<{ router: any }> = ({ router }) => {
   const colorScheme = useColorScheme();
 
-  // useEffect(() => {
-  //   const auth = getAuth();
+  useEffect(() => {
+    const auth = getAuth();
 
-  //   const unsubscribe = onAuthStateChanged(auth, (user) => {
-  //     if (user) {
-  //       router.push("/(tabs)");
-  //     } else {
-  //       // User is not authenticated, navigate to the login screen
-  //       router.replace("(modals)/login");
-  //     }
-  //   });
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        router.push("/(tabs)");
+      } else {
+        // User is not authenticated, navigate to the login screen
+        router.replace("(modals)/login");
+      }
+    });
 
-  //   // Clean up the subscription on unmount
-  //   return () => unsubscribe();
-  // }, []);
+    // Clean up the subscription on unmount
+    return () => unsubscribe();
+  }, []);
 
   return (
     <SQLiteProvider databaseName="chats.db" onInit={migrateDbIfNeeded}>

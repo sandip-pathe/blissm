@@ -27,7 +27,7 @@ import {
   systemInstructions,
   summaryInstructions,
 } from "@/constants/var";
-import { Entypo, Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { doc, getDoc } from "firebase/firestore";
 import { FIRESTORE_DB } from "@/FirebaseConfig";
 

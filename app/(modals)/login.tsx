@@ -18,6 +18,7 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import ForgotPasswordModal from "../(modals)/forgotPasswordModal";
+import { useCustomAuth } from "@/components/authContext";
 
 const AdminLogin = () => {
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
@@ -26,6 +27,7 @@ const AdminLogin = () => {
   const [loading, setLoading] = useState(false);
   const auth = FIREBASE_AUTH;
   const db = FIRESTORE_DB;
+  const { refreshUserProfile } = useCustomAuth();
 
   const toggleForgotPasswordModal = () => {
     setShowForgotPasswordModal(!showForgotPasswordModal);
@@ -35,9 +37,15 @@ const AdminLogin = () => {
     setLoading(true);
     try {
       const response = await signInWithEmailAndPassword(auth, email, password);
-      console.log(response);
-      if (!response.user) {
-        throw new Error("User not found");
+      console.log("Sign-in successful:", response);
+
+      if (!response.user.emailVerified) {
+        Alert.alert(
+          "Email Not Verified",
+          "Please verify your email before signing in."
+        );
+        await auth.signOut();
+        return;
       }
     } catch (error: any) {
       console.log(error);
@@ -55,9 +63,12 @@ const AdminLogin = () => {
         email,
         password
       );
-      console.log(response);
-      sendVerificationEmail();
-      saveUserData(response.user.uid);
+      console.log("User created:", response.user);
+
+      await saveUserData(response.user.uid); // Ensure Firestore profile is created
+
+      sendVerificationEmail(); // Send verification email
+
       Alert.alert(
         "Sign Up Successful",
         "A verification email has been sent to your email address. Please verify your email before signing in."
@@ -87,10 +98,12 @@ const AdminLogin = () => {
       if (!docSnap.exists()) {
         const userData = {
           email: auth.currentUser?.email,
-          // Add any additional user data you want to store
+          password: password,
         };
         await setDoc(userRef, userData);
         console.log("New user data saved to Firestore");
+
+        await refreshUserProfile();
       } else {
         console.log("User data already exists in Firestore");
       }
