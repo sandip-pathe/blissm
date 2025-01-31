@@ -291,10 +291,6 @@ const JournalScreen: React.FC = () => {
   };
 
   const handleBackgroundColorChange = (color: string) => {
-    // Update the background color of the journal screen
-    // You can use state or a context to manage the background color
-    console.log("Selected color:", color);
-    // Example: Update a state variable for background color
     setBackgroundColor(color);
   };
 
@@ -302,15 +298,24 @@ const JournalScreen: React.FC = () => {
     <>
       <Stack.Screen
         options={{
+          statusBarBackgroundColor: backgroundColor,
           header: () => (
-            <View style={styles.header}>
-              <View>
+            <View style={[styles.header, { backgroundColor }]}>
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+              >
+                <Ionicons name="arrow-back" size={24} color={Colors.light} />
                 <Text style={styles.triggerText}>
                   {new Date().toLocaleDateString()}
                 </Text>
               </View>
               <TouchableOpacity
-                style={styles.triggerButton}
+                style={[
+                  styles.triggerButton,
+                  loadingPrompt || lastInput.length == 0
+                    ? styles.disabledButton
+                    : null,
+                ]}
                 onPress={handleTrigger}
                 disabled={loadingPrompt && lastInput.length == 0}
               >
@@ -319,11 +324,11 @@ const JournalScreen: React.FC = () => {
                 ) : (
                   <>
                     <Ionicons
-                      name="add-circle-outline"
+                      name="sparkles-outline"
                       size={24}
                       color={Colors.light}
                     />
-                    <Text style={styles.triggerText}>Add Prompt</Text>
+                    <Text style={styles.triggerText}>Inspire Me</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -356,10 +361,19 @@ const JournalScreen: React.FC = () => {
           >
             {prompts.map((prompt, index) => (
               <View key={`prompt-item-${index}`}>
-                <View style={styles.promptContainer}>
+                <View
+                  style={
+                    index === 0
+                      ? styles.prompt1Container
+                      : styles.promptContainer
+                  }
+                >
                   {index === 0 && prompts.length < 2 && (
-                    <TouchableOpacity onPress={handleAddPrompt}>
-                      <Text style={styles.promptText}>Add Prompt</Text>
+                    <TouchableOpacity
+                      onPress={handleAddPrompt}
+                      style={styles.triggerButton}
+                    >
+                      <Text style={styles.triggerText}>Pick a Prompt</Text>
                     </TouchableOpacity>
                   )}
                   <Text style={styles.promptText}>{prompt}</Text>
@@ -401,7 +415,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "flex-end",
     flexDirection: "row",
-    backgroundColor: Colors.lightPink,
   },
   input: {
     color: Colors.light,
@@ -415,6 +428,16 @@ const styles = StyleSheet.create({
     alignContent: "flex-start",
     paddingLeft: 5,
   },
+  prompt1Container: {
+    flex: 1,
+    width: "100%",
+    borderRadius: 10,
+    paddingVertical: 5,
+    alignSelf: "flex-start",
+    alignContent: "flex-start",
+    paddingLeft: 5,
+    backgroundColor: "rgba(252, 252, 252, 0.2)",
+  },
   promptText: {
     fontSize: 20,
     fontWeight: "500",
@@ -424,10 +447,12 @@ const styles = StyleSheet.create({
   triggerButton: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: 8,
+  },
+  disabledButton: {
+    opacity: 0.7,
   },
   triggerText: {
-    marginLeft: 8,
     fontSize: 16,
     color: Colors.light,
     fontWeight: "bold",
@@ -450,7 +475,7 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   spacer: {
-    height: 150,
+    height: 60,
   },
   loader: {
     alignSelf: "center",
