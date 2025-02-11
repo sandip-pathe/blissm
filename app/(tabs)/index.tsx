@@ -151,6 +151,7 @@ const JournalDashboardScreen: React.FC = () => {
 const styles = StyleSheet.create({
   journalList: {
     paddingBottom: 20,
+    backgroundColor: Colors.primary,
   },
   container: {
     flex: 1,
@@ -186,7 +187,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   journalItem: {
-    backgroundColor: Colors.darkLight,
+    backgroundColor: "#fe98c2",
     padding: 15,
     borderRadius: 8,
     marginBottom: 10,

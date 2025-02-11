@@ -62,35 +62,16 @@ const RootLayoutNav: React.FC<{ router: any }> = ({ router }) => {
     <SQLiteProvider databaseName="chats.db" onInit={migrateDbIfNeeded}>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
         <AuthProvider>
-          <Stack>
-            <Stack.Screen
-              name="(tabs)"
-              options={{
-                headerShown: false,
-                statusBarBackgroundColor: "rgb(1, 1, 1)",
-              }}
-            />
-            <Stack.Screen
-              name="(modals)"
-              options={{
-                headerShown: false,
-                statusBarBackgroundColor: "rgb(1, 1, 1)",
-              }}
-            />
-            <Stack.Screen
-              name="(screens)"
-              options={{
-                headerShown: false,
-                statusBarBackgroundColor: "rgb(1, 1, 1)",
-              }}
-            />
-            <Stack.Screen
-              name="(chat)"
-              options={{
-                headerShown: false,
-                statusBarBackgroundColor: "rgb(1, 1, 1)",
-              }}
-            />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              statusBarBackgroundColor: Colors.primary,
+            }}
+          >
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="(modals)" />
+            <Stack.Screen name="(screens)" />
+            <Stack.Screen name="(chat)" />
           </Stack>
         </AuthProvider>
       </ThemeProvider>

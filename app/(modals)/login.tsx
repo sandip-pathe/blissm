@@ -39,14 +39,14 @@ const AdminLogin = () => {
       const response = await signInWithEmailAndPassword(auth, email, password);
       console.log("Sign-in successful:", response);
 
-      if (!response.user.emailVerified) {
-        Alert.alert(
-          "Email Not Verified",
-          "Please verify your email before signing in."
-        );
-        await auth.signOut();
-        return;
-      }
+      // if (!response.user.emailVerified) {
+      //   Alert.alert(
+      //     "Email Not Verified",
+      //     "Please verify your email before signing in."
+      //   );
+      //   await auth.signOut();
+      //   return;
+      // }
     } catch (error: any) {
       console.log(error);
       Alert.alert("Sign In Failed", error.message);

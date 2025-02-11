@@ -1,6 +1,7 @@
 import React from "react";
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import Colors from "@/constants/Colors";
 
 export default function AppLayout() {
   return (
@@ -8,6 +9,8 @@ export default function AppLayout() {
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: false,
+        tabBarActiveBackgroundColor: Colors.primary,
+        tabBarInactiveBackgroundColor: Colors.primary,
       }}
     >
       <Tabs.Screen
