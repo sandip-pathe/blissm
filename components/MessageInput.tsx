@@ -135,19 +135,22 @@ const MessageInput = ({ onShouldSend }: Props) => {
             justifyContent: "center",
             paddingHorizontal: 5,
             borderRadius: 20,
-            borderColor: Colors.greyLight,
-            backgroundColor: Colors.primary,
+            backgroundColor: Colors.light,
             width: 50,
             height: 50,
           }}
         >
           {message.length > 0 ? (
             <TouchableOpacity onPress={onSend}>
-              <Ionicons name="send-sharp" size={24} color={Colors.light} />
+              <Ionicons name="send-sharp" size={24} color={Colors.accent2} />
             </TouchableOpacity>
           ) : (
             <TouchableOpacity>
-              <FontAwesome5 name="microphone" size={24} color={Colors.light} />
+              <FontAwesome5
+                name="microphone"
+                size={24}
+                color={Colors.accent2}
+              />
             </TouchableOpacity>
           )}
         </View>

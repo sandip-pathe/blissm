@@ -22,6 +22,7 @@ import { useRouter } from "expo-router";
 import { collection, getDocs } from "firebase/firestore";
 import { FIRESTORE_DB } from "@/FirebaseConfig";
 import { getAllChatSessions, inspectDatabase } from "@/database/sqlite";
+import Avatar from "@/components/Avatar";
 
 interface onlineGPTs {
   id: string;
@@ -46,8 +47,8 @@ const ChatDashboardScreen: React.FC = () => {
   const [localChats, setLocalChats] = useState<localGPTs[]>([]);
   const router = useRouter();
   const db = useSQLiteContext();
-  const [filteredOnlineEntries, setFilteredOnlineEntries] = useState<any[]>([]); // Separate filtered entries for online GPTs
-  const [filteredLocalEntries, setFilteredLocalEntries] = useState<any[]>([]); // Separate filtered entries for local chats
+  const [filteredOnlineEntries, setFilteredOnlineEntries] = useState<any[]>([]);
+  const [filteredLocalEntries, setFilteredLocalEntries] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadingOnline, setLoadingOnline] = useState(true);
@@ -136,12 +137,13 @@ const ChatDashboardScreen: React.FC = () => {
               placeholderTextColor={Colors.light}
               style={styles.searchInput}
               value={searchQuery}
+              cursorColor={Colors.light}
               onChangeText={setSearchQuery}
             />
             <MaterialCommunityIcons
               onPress={() => setViewMode(viewMode === "list" ? "grid" : "list")}
               name={viewMode === "list" ? "view-grid" : "view-agenda"}
-              color={Colors.light}
+              color="white"
               size={24}
             />
             <TouchableOpacity
@@ -169,10 +171,10 @@ const ChatDashboardScreen: React.FC = () => {
                         onPress={() => router.navigate(`../(chat)/${e.id}`)}
                       >
                         <View style={styles.iconContainer}>
-                          <Ionicons
-                            name="chatbox"
-                            size={40}
-                            color={Colors.light}
+                          <Avatar
+                            title={e.title}
+                            imageUrl={e.imageUrl}
+                            size={50}
                           />
                         </View>
                         <View style={styles.detailsContainer}>
@@ -199,10 +201,10 @@ const ChatDashboardScreen: React.FC = () => {
                               }
                             >
                               <View style={styles.iconContainer}>
-                                <Ionicons
-                                  name="chatbox"
-                                  size={50}
-                                  color={Colors.light}
+                                <Avatar
+                                  title={e.title}
+                                  imageUrl={e.imageUrl}
+                                  size={70}
                                 />
                               </View>
                               <View style={styles.detailsContainer}>
@@ -226,10 +228,10 @@ const ChatDashboardScreen: React.FC = () => {
                               }
                             >
                               <View style={styles.iconContainer}>
-                                <Ionicons
-                                  name="chatbox"
-                                  size={50}
-                                  color={Colors.light}
+                                <Avatar
+                                  title={e.title}
+                                  imageUrl={e.imageUrl}
+                                  size={70}
                                 />
                               </View>
                               <View style={styles.detailsContainer}>
@@ -270,10 +272,10 @@ const ChatDashboardScreen: React.FC = () => {
                         onPress={() => router.navigate(`../(chat)/${e.id}`)}
                       >
                         <View style={styles.iconContainer}>
-                          <Ionicons
-                            name={e.icon as any}
-                            size={40}
-                            color={Colors.light}
+                          <Avatar
+                            title={e.title}
+                            imageUrl={e.imageUrl}
+                            size={50}
                           />
                         </View>
                         <View style={styles.detailsContainer}>
@@ -300,10 +302,10 @@ const ChatDashboardScreen: React.FC = () => {
                               }
                             >
                               <View style={styles.iconContainer}>
-                                <Ionicons
-                                  name={e.icon as any}
-                                  size={50}
-                                  color={Colors.light}
+                                <Avatar
+                                  title={e.title}
+                                  imageUrl={e.imageUrl}
+                                  size={70}
                                 />
                               </View>
                               <View style={styles.detailsContainer}>
@@ -327,10 +329,10 @@ const ChatDashboardScreen: React.FC = () => {
                               }
                             >
                               <View style={styles.iconContainer}>
-                                <Ionicons
-                                  name={e.icon as any}
-                                  size={50}
-                                  color={Colors.light}
+                                <Avatar
+                                  title={e.title}
+                                  imageUrl={e.imageUrl}
+                                  size={70}
                                 />
                               </View>
                               <View style={styles.detailsContainer}>
@@ -369,6 +371,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: Colors.light,
     marginVertical: 10,
+    fontFamily: "Poppins-Regular",
   },
   container: {
     flex: 1,
@@ -378,7 +381,7 @@ const styles = StyleSheet.create({
     gap: 10,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.darkLight,
+    backgroundColor: Colors.accent2,
     borderRadius: 20,
     paddingHorizontal: 10,
     marginBottom: 20,
@@ -388,6 +391,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: Colors.light,
     paddingVertical: 10,
+    fontFamily: "Poppins-Regular",
   },
   journalItem: {
     flexDirection: "row",
@@ -413,6 +417,7 @@ const styles = StyleSheet.create({
     marginVertical: 5,
     borderRadius: 8,
     marginBottom: 10,
+    gap: 10,
   },
   iconContainer: {
     marginRight: 16,
@@ -428,15 +433,18 @@ const styles = StyleSheet.create({
   descriptionText: {
     fontSize: 14,
     color: Colors.greyLight,
+    fontFamily: "Poppins-Regular",
   },
   notFoundText: {
     fontSize: 16,
     color: Colors.light,
     marginVertical: 20,
+    fontFamily: "Poppins-Regular",
   },
   highlight: {
     fontWeight: "bold",
     backgroundColor: Colors.dark,
+    fontFamily: "Poppins-Regular",
   },
 });
 

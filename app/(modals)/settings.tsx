@@ -19,6 +19,7 @@ import { clearAllData } from "@/database/sqlite";
 import { SQLiteDatabase, useSQLiteContext } from "expo-sqlite";
 import Colors from "../../constants/Colors";
 import { getFirestore, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import Avatar from "@/components/Avatar";
 
 const Profile = () => {
   const { currentUser, refreshUserProfile } = useCustomAuth();
@@ -26,7 +27,7 @@ const Profile = () => {
   const db = useSQLiteContext();
   const auth = FIREBASE_AUTH;
 
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [fullName, setFullName] = useState(currentUser?.fullName || "");
@@ -139,11 +140,7 @@ const Profile = () => {
       <Stack.Screen options={{ headerShown: true, title: "Settings" }} />
       <View style={styles.itemContainer}>
         <TouchableOpacity onPress={() => setIsModalVisible(true)}>
-          <MaterialCommunityIcons
-            name={(selectedAvatar as any) || "account-circle"}
-            size={50}
-            color={Colors.primary}
-          />
+          <Avatar title={fullName} imageUrl={""} size={50} />
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setIsEditing(true)}
@@ -156,9 +153,9 @@ const Profile = () => {
         >
           <Text style={styles.nameText}>{fullName || "Set Name"}</Text>
           <MaterialCommunityIcons
-            name="pencil"
+            name="pencil-circle"
             size={24}
-            color={Colors.light}
+            color={Colors.accent}
           />
         </TouchableOpacity>
       </View>
@@ -171,7 +168,7 @@ const Profile = () => {
             style={styles.input}
             placeholder="Enter Full Name"
             cursorColor={Colors.light}
-            placeholderTextColor={Colors.light}
+            placeholderTextColor={Colors.greyLight}
           />
           <TextInput
             value={contact}
@@ -180,7 +177,7 @@ const Profile = () => {
             placeholder="Enter Contact Number"
             keyboardType="phone-pad"
             cursorColor={Colors.light}
-            placeholderTextColor={Colors.light}
+            placeholderTextColor={Colors.greyLight}
           />
           <TouchableOpacity
             style={styles.saveButton}
@@ -199,6 +196,7 @@ const Profile = () => {
           </View>
           <Switch
             value={isDarkMode}
+            style={{ transform: [{ scaleX: 1.2 }, { scaleY: 1.2 }] }}
             onValueChange={() => setIsDarkMode(!isDarkMode)}
           />
         </View>
@@ -321,7 +319,7 @@ const styles = StyleSheet.create({
     marginRight: 16,
   },
   nameText: {
-    color: Colors.primary,
+    color: Colors.accent,
     fontSize: 24,
     fontWeight: "bold",
   },
@@ -354,11 +352,17 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     padding: 8,
     color: Colors.light,
+    backgroundColor: Colors.secondary,
+    borderColor: Colors.accent2,
+    borderWidth: 1,
+    borderRadius: 5,
   },
   saveButton: {
-    backgroundColor: Colors.primary,
-    padding: 10,
+    backgroundColor: Colors.accent2,
+    borderColor: Colors.accent2,
+    borderWidth: 1,
     borderRadius: 5,
+    padding: 10,
   },
   saveText: {
     color: "white",

@@ -72,6 +72,7 @@ const styles = StyleSheet.create({
   },
   text: {
     color: "#2C3E50",
+    fontFamily: "Poppins-Regular",
   },
   loading: {
     justifyContent: "center",

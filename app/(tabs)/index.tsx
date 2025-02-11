@@ -83,12 +83,13 @@ const JournalDashboardScreen: React.FC = () => {
               placeholderTextColor={Colors.light}
               style={styles.searchInput}
               value={searchQuery}
+              cursorColor={Colors.light}
               onChangeText={setSearchQuery}
             />
             <MaterialCommunityIcons
               onPress={() => setViewMode(viewMode === "list" ? "grid" : "list")}
               name={viewMode === "list" ? "view-grid" : "view-agenda"}
-              color={Colors.light}
+              color="white"
               size={24}
             />
             <TouchableOpacity
@@ -125,7 +126,7 @@ const JournalDashboardScreen: React.FC = () => {
                   >
                     <Text style={styles.journalDate}>
                       {highlightSearchTerm(
-                        truncateText(entry.lastBotResponse, 100)
+                        truncateText(entry.lastBotResponse, 80)
                       )}
                     </Text>
                   </TouchableOpacity>
@@ -133,7 +134,7 @@ const JournalDashboardScreen: React.FC = () => {
               </View>
             )
           ) : (
-            <Text style={styles.noEntriesText}>No journals found.</Text>
+            <Text style={styles.noEntriesText}>No Entries found</Text>
           )}
         </View>
       </ScrollView>
@@ -151,7 +152,6 @@ const JournalDashboardScreen: React.FC = () => {
 const styles = StyleSheet.create({
   journalList: {
     paddingBottom: 20,
-    backgroundColor: Colors.primary,
   },
   container: {
     flex: 1,
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
     gap: 10,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.darkLight,
+    backgroundColor: Colors.accent2,
     borderRadius: 20,
     paddingHorizontal: 10,
     marginBottom: 20,
@@ -171,6 +171,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: Colors.light,
     paddingVertical: 10,
+    fontFamily: "Poppins-Regular",
   },
   writeEntryButton: {
     position: "absolute",
@@ -180,26 +181,28 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 12,
     borderRadius: 10,
-    backgroundColor: "#E8F9FF",
+    backgroundColor: Colors.accent,
   },
   buttonText: {
     color: Colors.dark,
     fontWeight: "500",
   },
   journalItem: {
-    backgroundColor: "#fe98c2",
+    backgroundColor: Colors.secondary,
     padding: 15,
     borderRadius: 8,
     marginBottom: 10,
   },
   journalDate: {
-    fontSize: 16,
+    fontSize: 18,
     color: Colors.light,
+    fontFamily: "Poppins-Regular",
   },
   noEntriesText: {
     textAlign: "center",
     color: Colors.light,
     fontSize: 16,
+    fontFamily: "Poppins-Regular",
   },
   gridContainer: {
     flexDirection: "row",
@@ -208,7 +211,7 @@ const styles = StyleSheet.create({
   },
   gridItem: {
     width: "48%",
-    backgroundColor: Colors.darkLight,
+    backgroundColor: Colors.secondary,
     padding: 10,
     borderRadius: 8,
     marginBottom: 10,

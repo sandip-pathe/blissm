@@ -3,12 +3,13 @@ import {
   DefaultTheme,
   ThemeProvider,
 } from "@react-navigation/native";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { SplashScreen, Stack, useRouter } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { getAuth, onAuthStateChanged } from "firebase/auth"; // Import Firebase auth
 import Colors from "@/constants/Colors";
+import * as Font from "expo-font";
 import {
   SQLiteProvider,
   useSQLiteContext,
@@ -27,10 +28,24 @@ SplashScreen.preventAutoHideAsync();
 
 const RootLayout: React.FC = () => {
   const router = useRouter();
+  const [fontsLoaded, setFontsLoaded] = useState(false);
 
   useEffect(() => {
-    SplashScreen.hideAsync();
+    async function loadFonts() {
+      await Font.loadAsync({
+        "Poppins-Regular": require("@/assets/fonts/Poppins-Regular.ttf"),
+        "Poppins-Bold": require("@/assets/fonts/Poppins-Bold.ttf"),
+      });
+      setFontsLoaded(true);
+      SplashScreen.hideAsync(); // Hide splash screen after fonts load
+    }
+
+    loadFonts();
   }, []);
+
+  if (!fontsLoaded) {
+    return null; // Don't render UI until fonts are loaded
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

@@ -380,6 +380,7 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontWeight: "bold",
     textOverflow: "truncate",
+    fontFamily: "Poppins-Bold",
   },
 });
 

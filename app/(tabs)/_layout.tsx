@@ -9,19 +9,22 @@ export default function AppLayout() {
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: false,
-        tabBarActiveBackgroundColor: Colors.primary,
-        tabBarInactiveBackgroundColor: Colors.primary,
+        tabBarActiveTintColor: Colors.accent2,
+        tabBarInactiveTintColor: Colors.grey,
+        tabBarStyle: {
+          borderTopWidth: 0,
+          backgroundColor: Colors.primary,
+        },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          tabBarShowLabel: false,
           title: "Home",
-          tabBarIcon: ({ color, focused }) => (
+          tabBarIcon: ({ color, focused, size }) => (
             <Ionicons
               name={focused ? "journal" : "journal-outline"}
-              size={28}
+              size={30}
               color={color}
             />
           ),
@@ -31,10 +34,10 @@ export default function AppLayout() {
         name="explore"
         options={{
           title: "Explore",
-          tabBarIcon: ({ color, focused }) => (
+          tabBarIcon: ({ color, focused, size }) => (
             <Ionicons
               name={focused ? "chatbox" : "chatbox-outline"}
-              size={28}
+              size={30}
               color={color}
             />
           ),
