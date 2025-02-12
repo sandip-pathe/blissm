@@ -19,6 +19,7 @@ import {
 } from "@expo/vector-icons";
 import { TextInput } from "react-native-gesture-handler";
 import { useRouter } from "expo-router";
+import JournalOnboarding from "@/components/journalOnboarding";
 
 const JournalDashboardScreen: React.FC = () => {
   const db = useSQLiteContext();
@@ -134,17 +135,21 @@ const JournalDashboardScreen: React.FC = () => {
               </View>
             )
           ) : (
-            <Text style={styles.noEntriesText}>No Entries found</Text>
+            <View style={{ flex: 1, justifyContent: "center" }}>
+              <JournalOnboarding />
+            </View>
           )}
         </View>
       </ScrollView>
-      <TouchableOpacity
-        style={styles.writeEntryButton}
-        onPress={() => router.navigate("../(screens)/new")}
-      >
-        <FontAwesome6 name="edit" size={20} color={Colors.dark} />
-        <Text style={styles.buttonText}>Write Entry</Text>
-      </TouchableOpacity>
+      {!loading && filteredEntries.length !== 0 ? (
+        <TouchableOpacity
+          style={styles.writeEntryButton}
+          onPress={() => router.navigate("../(screens)/new")}
+        >
+          <FontAwesome6 name="edit" size={20} color={Colors.dark} />
+          <Text style={styles.buttonText}>Write Entry</Text>
+        </TouchableOpacity>
+      ) : null}
     </>
   );
 };

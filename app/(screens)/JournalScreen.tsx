@@ -47,7 +47,7 @@ const JournalScreen: React.FC = () => {
   const [session, setSession] = useState<any>();
   const [showPromptsModal, setShowPromptsModal] = useState(false);
   const [backgroundColor, setBackgroundColor] = useState<string>(
-    Colors.lightPink
+    Colors.primary
   );
 
   const handlePromptSelect = (prompt: string) => {

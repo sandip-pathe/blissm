@@ -1,5 +1,4 @@
-import Colors from "@/constants/Colors";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -12,9 +11,9 @@ import {
 import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
-import React from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { FIRESTORE_DB } from "@/FirebaseConfig";
+import Colors from "@/constants/Colors";
 
 interface PromptsModalProps {
   visible: boolean;
@@ -27,19 +26,21 @@ interface PromptCategory {
   entries: string[];
 }
 
-const PromptsModal = ({
+const PromptsModal: React.FC<PromptsModalProps> = ({
   visible,
   onClose,
   onSelectPrompt,
-}: PromptsModalProps) => {
+}) => {
   const [prompts, setPrompts] = useState<PromptCategory[]>([]);
   const [selected, setSelected] = useState<PromptCategory | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!visible) return;
+
     const fetchPrompts = async () => {
+      setLoading(true);
       try {
-        setLoading(true);
         const querySnapshot = await getDocs(
           collection(FIRESTORE_DB, "prompts")
         );
@@ -59,15 +60,16 @@ const PromptsModal = ({
       }
     };
 
-    if (visible) fetchPrompts();
+    fetchPrompts();
   }, [visible]);
 
   if (!visible) return null;
 
   return (
-    <Modal style={styles.modalContainer} transparent>
+    <Modal transparent>
       <BlurView intensity={60} tint="light" style={styles.blurContainer}>
         <View style={styles.modalContent}>
+          {/* Header */}
           <View style={styles.header}>
             <Text style={styles.modalTitle}>Getting Started Prompts</Text>
             <TouchableOpacity style={styles.closeButton} onPress={onClose}>
@@ -75,22 +77,24 @@ const PromptsModal = ({
             </TouchableOpacity>
           </View>
 
+          {/* Loading Indicator */}
           {loading ? (
             <ActivityIndicator
               size="large"
               color={Colors.primary}
-              style={{ marginTop: 20 }}
+              style={styles.loader}
             />
           ) : (
             <>
+              {/* Category Tabs */}
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.tabsContainer}
               >
-                {prompts.map((section, index) => (
+                {prompts.map((section) => (
                   <TouchableOpacity
-                    key={index}
+                    key={section.category}
                     onPress={() => setSelected(section)}
                     style={[
                       styles.sectionBtn,
@@ -111,6 +115,7 @@ const PromptsModal = ({
                 ))}
               </ScrollView>
 
+              {/* Prompts List */}
               <ScrollView
                 contentContainerStyle={styles.contentContainer}
                 showsVerticalScrollIndicator={false}
@@ -130,7 +135,7 @@ const PromptsModal = ({
                         <Ionicons
                           name="caret-forward-sharp"
                           size={24}
-                          color={Colors.dark}
+                          color={Colors.light}
                         />
                         <View style={styles.cardTextContainer}>
                           <Text style={styles.cardAuthor}>{prompt}</Text>
@@ -149,40 +154,37 @@ const PromptsModal = ({
 };
 
 const styles = StyleSheet.create({
-  modalContainer: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 999,
-  },
   blurContainer: {
     flex: 1,
-    paddingHorizontal: 16,
     justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: Colors.lightPink,
+    backgroundColor: Colors.primary,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
-    overflow: "hidden",
     width: "100%",
     height: "75%",
+    paddingBottom: 16,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 8,
-    borderBottomColor: Colors.input,
+    padding: 12,
     borderBottomWidth: 1,
+    borderBottomColor: Colors.light,
   },
   modalTitle: {
-    marginLeft: 8,
     fontSize: 20,
     fontWeight: "600",
-    color: Colors.dark,
+    color: Colors.light,
   },
   closeButton: {
-    backgroundColor: Colors.input,
+    backgroundColor: Colors.light,
     borderRadius: 16,
+  },
+  loader: {
+    marginTop: 20,
   },
   tabsContainer: {
     height: 60,
@@ -198,42 +200,40 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "bold",
     marginBottom: 16,
-    color: Colors.dark,
+    color: Colors.light,
   },
   sectionBtn: {
-    backgroundColor: Colors.input,
+    backgroundColor: Colors.accent,
     borderRadius: 14,
     paddingHorizontal: 12,
-    alignItems: "center",
     justifyContent: "center",
+    alignItems: "center",
   },
   sectionBtnSelected: {
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.secondary,
   },
   sectionBtnText: {
-    color: Colors.dark,
-    fontWeight: "500",
+    color: Colors.light,
+    fontFamily: "Poppins-Regular",
   },
   sectionBtnTextSelected: {
-    color: Colors.lightPink,
-    fontWeight: "500",
+    fontWeight: "bold",
   },
   card: {
     borderRadius: 8,
-    backgroundColor: Colors.input,
+    backgroundColor: Colors.secondary,
     padding: 16,
     marginBottom: 8,
     flexDirection: "row",
     alignItems: "center",
-    gap: 16,
   },
   cardTextContainer: {
     flexShrink: 1,
-    gap: 4,
   },
   cardAuthor: {
     fontSize: 14,
-    color: Colors.grey,
+    color: Colors.light,
+    fontFamily: "Poppins-Regular",
   },
 });
 
