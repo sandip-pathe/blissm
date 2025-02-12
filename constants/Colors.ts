@@ -21,7 +21,7 @@ export default {
   selected: '#F7F2F9',
   dark: '#000101',
   darkLight: '#2F2D32',
-  lightPink: "#B3C8CF",
+  lightPink: "#1B3A29",
   darkColor: "#76ABAE",
   gold: "#FFD700",
 };

@@ -87,12 +87,16 @@ const JournalDashboardScreen: React.FC = () => {
               cursorColor={Colors.light}
               onChangeText={setSearchQuery}
             />
-            <MaterialCommunityIcons
-              onPress={() => setViewMode(viewMode === "list" ? "grid" : "list")}
-              name={viewMode === "list" ? "view-grid" : "view-agenda"}
-              color="white"
-              size={24}
-            />
+            {!loading && filteredEntries.length !== 0 ? (
+              <MaterialCommunityIcons
+                onPress={() =>
+                  setViewMode(viewMode === "list" ? "grid" : "list")
+                }
+                name={viewMode === "list" ? "view-grid" : "view-agenda"}
+                color="white"
+                size={24}
+              />
+            ) : null}
             <TouchableOpacity
               onPress={() => router.navigate("/(modals)/settings")}
             >

@@ -185,6 +185,7 @@ const styles = StyleSheet.create({
   },
   loader: {
     marginTop: 20,
+    zIndex: 1000,
   },
   tabsContainer: {
     height: 60,

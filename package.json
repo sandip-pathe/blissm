@@ -48,7 +48,10 @@
     "react-native-web": "~0.19.13",
     "react-native-webview": "13.12.5",
     "reanimated-bottom-sheet": "^1.0.0-alpha.22",
-    "react-native-svg": "15.8.0"
+    "react-native-svg": "15.8.0",
+    "expo-network": "~7.0.5",
+    "expo-av": "~15.0.2",
+    "expo-speech": "~13.0.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

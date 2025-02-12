@@ -24,20 +24,23 @@ const JournalOnboarding = () => {
       <View style={styles.howItWorksContainer}>
         <Text style={styles.howItWorksTitle}>🛠 How It Works</Text>
         <Text style={styles.howItWorksText}>
-          1️⃣ Pick a{" "}
+          1️⃣ <Text style={styles.howItWorksText2}>Start a new journal</Text>
+        </Text>
+        <Text style={styles.howItWorksText}>
+          2️⃣ Pick a{" "}
           <Text style={styles.howItWorksText2}>Getting Started Prompt</Text>{" "}
           from the list.
         </Text>
         <Text style={styles.howItWorksText}>
-          2️⃣ <Text style={styles.howItWorksText2}>Respond freely</Text> in your
+          3️⃣<Text style={styles.howItWorksText2}> Respond freely</Text> in your
           journal.
         </Text>
         <Text style={styles.howItWorksText}>
-          3️⃣ <Text style={styles.howItWorksText2}>Tap 'Inspire Me'</Text> – AI
+          4️⃣<Text style={styles.howItWorksText2}> Tap 'Inspire Me'</Text> – AI
           analyzes your entry & suggests a follow-up prompt.
         </Text>
         <Text style={styles.howItWorksText}>
-          4️⃣{" "}
+          5️⃣{" "}
           <Text style={styles.howItWorksText2}>
             Answer AI-generated prompts
           </Text>{" "}
@@ -56,7 +59,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 16,
-    gap: 16,
+    gap: 10,
   },
   welcome: {
     fontSize: 24,

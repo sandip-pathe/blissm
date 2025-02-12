@@ -1,5 +1,6 @@
 import Colors from "@/constants/Colors";
 import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
+import BouncingDotsLoader from "./BouncingDotsLoader";
 
 export enum Role {
   User = 0,
@@ -32,7 +33,7 @@ const ChatMessage = ({
     >
       {loading ? (
         <View style={styles.loading}>
-          <ActivityIndicator size="small" color={Colors.primary} />
+          <BouncingDotsLoader />
         </View>
       ) : (
         <View
@@ -61,20 +62,22 @@ const styles = StyleSheet.create({
     borderRadius: 15,
   },
   userBubble: {
-    backgroundColor: "#D6EAF8",
+    backgroundColor: "#A17C65",
     alignSelf: "flex-end",
     borderEndStartRadius: 0,
   },
   botBubble: {
-    backgroundColor: "#FDEDEC",
+    backgroundColor: "#1C2733",
     alignSelf: "flex-start",
     borderStartStartRadius: 0,
   },
   text: {
-    color: "#2C3E50",
+    color: Colors.light,
     fontFamily: "Poppins-Regular",
+    fontSize: 16,
   },
   loading: {
+    alignSelf: "flex-end",
     justifyContent: "center",
     alignItems: "center",
     height: 30,

@@ -19,6 +19,6 @@ export const defaultStyles = StyleSheet.create({
   },
   pageContainer: {
     flex: 1,
-    backgroundColor: Colors.lightPink,
+    // backgroundColor: Colors.lightPink,
   },
 });

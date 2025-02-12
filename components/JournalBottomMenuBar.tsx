@@ -15,7 +15,7 @@ interface BottomBarProps {
   onChangeBackgroundColor: (color: string) => void;
 }
 
-const darkColors = [
+const DARK_COLORS = [
   "#1E1E1E",
   "#222831",
   "#0B3D91",
@@ -50,7 +50,7 @@ const darkColors = [
 
 const BottomBar: React.FC<BottomBarProps> = ({ onChangeBackgroundColor }) => {
   const [modalVisible, setModalVisible] = useState(false);
-  const colorBoxWidth = (Dimensions.get("window").width - 32) / 5 - 10;
+  const colorBoxSize = (Dimensions.get("window").width - 40) / 5 - 8;
 
   const handleColorChange = useCallback(
     (color: string) => {
@@ -62,6 +62,7 @@ const BottomBar: React.FC<BottomBarProps> = ({ onChangeBackgroundColor }) => {
 
   return (
     <>
+      {/* Floating Action Button */}
       <View style={styles.bottomBar}>
         <TouchableOpacity
           style={styles.iconButton}
@@ -71,62 +72,85 @@ const BottomBar: React.FC<BottomBarProps> = ({ onChangeBackgroundColor }) => {
         </TouchableOpacity>
       </View>
 
+      {/* Color Picker Modal */}
       <Modal visible={modalVisible} transparent animationType="slide">
-        <View style={styles.modalContainer}>
-          <View style={styles.handle} />
-          <TouchableOpacity
-            style={styles.closeButton}
-            onPress={() => setModalVisible(false)}
-          >
-            <Ionicons name="close-sharp" size={30} color={Colors.light} />
-          </TouchableOpacity>
-          <Text style={styles.modalTitle}>Choose Background Color</Text>
+        <View
+          style={styles.modalOverlay}
+          onTouchEnd={() => setModalVisible(false)}
+        >
+          <View style={styles.modalContent}>
+            {/* Handle Bar */}
+            <View style={styles.handle} />
 
-          <FlatList
-            data={darkColors}
-            numColumns={5}
-            contentContainerStyle={styles.flatListContainer}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[
-                  styles.colorBox,
-                  { backgroundColor: item, width: colorBoxWidth },
-                ]}
-                onPress={() => handleColorChange(item)}
-              />
-            )}
-            keyExtractor={(item) => item}
-          />
+            {/* Close Button */}
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setModalVisible(false)}
+            >
+              <Ionicons name="close-sharp" size={30} color={Colors.light} />
+            </TouchableOpacity>
+
+            {/* Modal Title */}
+            <Text style={styles.modalTitle}>Choose Background Color</Text>
+
+            {/* Color Options */}
+            <FlatList
+              data={DARK_COLORS}
+              numColumns={5}
+              contentContainerStyle={styles.colorGrid}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.colorBox,
+                    {
+                      backgroundColor: item,
+                      width: colorBoxSize,
+                      height: colorBoxSize,
+                    },
+                  ]}
+                  onPress={() => handleColorChange(item)}
+                />
+              )}
+              keyExtractor={(item) => item}
+            />
+          </View>
         </View>
       </Modal>
     </>
   );
 };
 
+export default BottomBar;
+
 const styles = StyleSheet.create({
   bottomBar: {
     flexDirection: "row",
     justifyContent: "flex-end",
     position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 5,
+    bottom: 20,
+    right: 20,
   },
   iconButton: {
-    alignItems: "center",
-    padding: 7,
+    backgroundColor: Colors.accent,
+    padding: 12,
     borderRadius: 50,
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
-  modalContainer: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: Colors.greyLight,
-    borderTopLeftRadius: 25,
-    borderTopRightRadius: 25,
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(1,1, 1, 0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: Colors.primary,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     padding: 16,
+    paddingBottom: 30,
   },
   handle: {
     width: 80,
@@ -139,26 +163,23 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 18,
-    color: "white",
-    marginBottom: 20,
+    color: Colors.light,
+    marginBottom: 15,
     textAlign: "center",
-  },
-  flatListContainer: {
-    justifyContent: "space-between",
-  },
-  colorBox: {
-    height: 50,
-    margin: 5,
-    borderRadius: 5,
-    borderWidth: 1,
-    borderColor: "white",
+    fontFamily: "Poppins-Bold",
   },
   closeButton: {
     position: "absolute",
-    right: 30,
-    top: 20,
-    zIndex: 10,
+    right: 20,
+    top: 15,
+  },
+  colorGrid: {
+    alignItems: "center",
+  },
+  colorBox: {
+    margin: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "white",
   },
 });
-
-export default BottomBar;

@@ -23,6 +23,8 @@ import { collection, getDocs } from "firebase/firestore";
 import { FIRESTORE_DB } from "@/FirebaseConfig";
 import { getAllChatSessions, inspectDatabase } from "@/database/sqlite";
 import Avatar from "@/components/Avatar";
+import { RefreshControl } from "react-native";
+import * as Network from "expo-network";
 
 interface onlineGPTs {
   id: string;
@@ -52,44 +54,59 @@ const ChatDashboardScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadingOnline, setLoadingOnline] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [isConnected, setIsConnected] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const checkNetworkStatus = async () => {
+      const status = await Network.getNetworkStateAsync();
+      setIsConnected(status.isInternetReachable ?? null);
+    };
+
+    checkNetworkStatus();
+    const interval = setInterval(checkNetworkStatus, 5000);
+    console.log("Checking network status every 5 seconds");
+    console.log("Network status: ", isConnected);
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchLocalModels = async () => {
+    try {
+      const chatSessions: localGPTs[] = await getAllChatSessions(db);
+      setLocalChats(chatSessions);
+    } catch (error) {
+      console.error("Failed to load local chat sessions:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     setLoading(true);
-    const fetchLocalModels = async () => {
-      try {
-        const chatSessions: localGPTs[] = await getAllChatSessions(db);
-        setLocalChats(chatSessions);
-      } catch (error) {
-        console.error("Failed to load local chat sessions:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchLocalModels();
   }, []);
 
+  const fetchOnlineModels = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(FIRESTORE_DB, "personas"));
+      const models: onlineGPTs[] = querySnapshot.docs.map((doc) => ({
+        ...doc.data(),
+        id: doc.id,
+        title: doc.data().title,
+        description: doc.data().description,
+        icon: doc.data().icon,
+        image: doc.data().image,
+      }));
+      setGptModels(models);
+    } catch (error) {
+      console.error("Error fetching GPT models: ", error);
+    } finally {
+      setLoadingOnline(false);
+    }
+  };
+
   useEffect(() => {
     setLoadingOnline(true);
-    const fetchOnlineModels = async () => {
-      try {
-        const querySnapshot = await getDocs(
-          collection(FIRESTORE_DB, "personas")
-        );
-        const models: onlineGPTs[] = querySnapshot.docs.map((doc) => ({
-          ...doc.data(),
-          id: doc.id,
-          title: doc.data().title,
-          description: doc.data().description,
-          icon: doc.data().icon,
-          image: doc.data().image,
-        }));
-        setGptModels(models);
-      } catch (error) {
-        console.error("Error fetching GPT models: ", error);
-      } finally {
-        setLoadingOnline(false);
-      }
-    };
     fetchOnlineModels();
   }, []);
 
@@ -127,9 +144,25 @@ const ChatDashboardScreen: React.FC = () => {
     );
   };
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([fetchLocalModels(), fetchOnlineModels()]);
+    } catch (error) {
+      console.error("Error refreshing:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   return (
     <>
-      <ScrollView contentContainerStyle={styles.journalList}>
+      <ScrollView
+        contentContainerStyle={styles.journalList}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         <View style={styles.container}>
           <View style={styles.searchContainer}>
             <TextInput
@@ -153,13 +186,22 @@ const ChatDashboardScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
 
+          <View>
+            {isConnected === null ? (
+              <ActivityIndicator size="large" color="blue" />
+            ) : !isConnected ? (
+              <>
+                <Text>No Internet.</Text>
+                <Text>Check your connection or use offline mode.</Text>
+              </>
+            ) : (
+              <Text>You are online!</Text>
+            )}
+          </View>
+
           {loading ? (
-            <ActivityIndicator size="large" color={Colors.primary} />
-          ) : filteredLocalEntries.length === 0 ? (
-            <Text style={styles.notFoundText}>
-              No chat found try exploring models to get started
-            </Text>
-          ) : (
+            <ActivityIndicator size="large" color={Colors.accent} />
+          ) : filteredLocalEntries.length > 0 ? (
             <>
               {filteredLocalEntries.length > 0 && (
                 <>
@@ -248,17 +290,14 @@ const ChatDashboardScreen: React.FC = () => {
                 </>
               )}
             </>
+          ) : (
+            <Text style={styles.notFoundText}>
+              No chat found try exploring models to get started
+            </Text>
           )}
 
           {loadingOnline ? (
-            <ActivityIndicator size="large" color={Colors.primary} />
-          ) : filteredLocalEntries.length === 0 ? (
-            <>
-              <Text style={styles.notFoundText}>No Internet.</Text>
-              <Text style={styles.notFoundText}>
-                Check your internet connection or see your local chats.
-              </Text>
-            </>
+            <ActivityIndicator size="large" color={Colors.accent} />
           ) : (
             <>
               {filteredOnlineEntries.length > 0 && (

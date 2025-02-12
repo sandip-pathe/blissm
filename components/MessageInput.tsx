@@ -1,161 +1,92 @@
 import Colors from "@/constants/Colors";
-import { Ionicons } from "@expo/vector-icons";
-import { View, StyleSheet } from "react-native";
-import { TextInput, TouchableOpacity } from "react-native";
-import Animated, {
-  Extrapolation,
-  interpolate,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from "react-native-reanimated";
+import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
+import { View, StyleSheet, TextInput, TouchableOpacity } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { FontAwesome5 } from "@expo/vector-icons";
 import { useRef, useState } from "react";
-import { BlurView } from "expo-blur";
-import * as DocumentPicker from "expo-document-picker";
-import * as ImagePicker from "expo-image-picker";
-
-const ATouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
+import { Audio } from "expo-av";
 
 export type Props = {
   onShouldSend: (message: string) => void;
+  onSendAudio: (audioUri: string) => void;
 };
 
-const MessageInput = ({ onShouldSend }: Props) => {
+const MessageInput = ({ onShouldSend, onSendAudio }: Props) => {
   const [message, setMessage] = useState("");
   const { bottom } = useSafeAreaInsets();
-  const expanded = useSharedValue(0);
   const inputRef = useRef<TextInput>(null);
-
-  const expandItems = () => {
-    expanded.value = withTiming(1, { duration: 400 });
-  };
-
-  const collapseItems = () => {
-    expanded.value = withTiming(0, { duration: 400 });
-  };
-
-  const expandButtonStyle = useAnimatedStyle(() => {
-    const opacityInterpolation = interpolate(
-      expanded.value,
-      [0, 1],
-      [1, 0],
-      Extrapolation.CLAMP
-    );
-    const widthInterpolation = interpolate(
-      expanded.value,
-      [0, 1],
-      [30, 0],
-      Extrapolation.CLAMP
-    );
-
-    return {
-      opacity: opacityInterpolation,
-      width: widthInterpolation,
-    };
-  });
-
-  const buttonViewStyle = useAnimatedStyle(() => {
-    const widthInterpolation = interpolate(
-      expanded.value,
-      [0, 1],
-      [0, 100],
-      Extrapolation.CLAMP
-    );
-    return {
-      width: widthInterpolation,
-      opacity: expanded.value,
-    };
-  });
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
 
   const onChangeText = (text: string) => {
-    collapseItems();
     setMessage(text);
   };
 
   const onSend = () => {
-    onShouldSend(message);
-    setMessage("");
+    if (message.trim().length > 0) {
+      onShouldSend(message);
+      setMessage("");
+    }
   };
 
-  const onSelectCard = (text: string) => {
-    onShouldSend(text);
+  const startRecording = async () => {
+    try {
+      const { granted } = await Audio.requestPermissionsAsync();
+      if (!granted) {
+        console.warn("Permission to access microphone is required");
+        return;
+      }
+
+      const newRecording = new Audio.Recording();
+      await newRecording.prepareToRecordAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      await newRecording.startAsync();
+      setRecording(newRecording);
+    } catch (error) {
+      console.error("Failed to start recording", error);
+    }
+  };
+
+  const stopRecording = async () => {
+    if (recording) {
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+      if (uri) onSendAudio(uri);
+      setRecording(null);
+    }
   };
 
   return (
-    <BlurView intensity={90}>
-      <View style={styles.row}>
-        <View
-          style={{
-            flex: 1,
-            flexDirection: "row",
-            alignItems: "center",
-            paddingHorizontal: 5,
-            paddingVertical: 5,
-            borderRadius: 20,
-            borderColor: Colors.greyLight,
-            backgroundColor: Colors.light,
-          }}
-        >
-          <ATouchableOpacity
-            onPress={expandItems}
-            style={[styles.roundBtn, expandButtonStyle]}
-          >
-            <Ionicons name="add" size={24} color={Colors.grey} />
-          </ATouchableOpacity>
-
-          <Animated.View style={[styles.buttonView, buttonViewStyle]}>
-            <TouchableOpacity onPress={() => ImagePicker.launchCameraAsync()}>
-              <Ionicons name="camera-outline" size={24} color={Colors.grey} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => ImagePicker.launchImageLibraryAsync()}
-            >
-              <Ionicons name="image-outline" size={24} color={Colors.grey} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => DocumentPicker.getDocumentAsync()}>
-              <Ionicons name="folder-outline" size={24} color={Colors.grey} />
-            </TouchableOpacity>
-          </Animated.View>
-
-          <TextInput
-            ref={inputRef}
-            placeholder="Message"
-            style={styles.messageInput}
-            onFocus={collapseItems}
-            onChangeText={onChangeText}
-            value={message}
-            multiline
-          />
-        </View>
-        <View
-          style={{
-            alignItems: "center",
-            justifyContent: "center",
-            paddingHorizontal: 5,
-            borderRadius: 20,
-            backgroundColor: Colors.light,
-            width: 50,
-            height: 50,
-          }}
-        >
-          {message.length > 0 ? (
-            <TouchableOpacity onPress={onSend}>
-              <Ionicons name="send-sharp" size={24} color={Colors.accent2} />
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity>
-              <FontAwesome5
-                name="microphone"
-                size={24}
-                color={Colors.accent2}
-              />
-            </TouchableOpacity>
-          )}
-        </View>
+    <View style={styles.row}>
+      <View style={styles.inputContainer}>
+        <TextInput
+          ref={inputRef}
+          placeholder="Message"
+          style={styles.messageInput}
+          onChangeText={onChangeText}
+          value={message}
+          multiline
+          cursorColor={"#8097A1"}
+          placeholderTextColor={"#8097A1"}
+        />
       </View>
-    </BlurView>
+      <View style={styles.buttonContainer}>
+        {message.length > 0 ? (
+          <TouchableOpacity onPress={onSend}>
+            <Ionicons name="send-sharp" size={24} color={Colors.accent2} />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            onPress={recording ? stopRecording : startRecording}
+          >
+            <FontAwesome5
+              name="microphone"
+              size={24}
+              color={recording ? "red" : Colors.accent2}
+            />
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
   );
 };
 
@@ -166,26 +97,32 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     gap: 5,
     paddingVertical: 5,
-    backgroundColor: Colors.lightPink,
+    backgroundColor: "transparent",
+  },
+  inputContainer: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 5,
+    paddingVertical: 5,
+    borderRadius: 20,
+    backgroundColor: "#1E272A",
   },
   messageInput: {
     flex: 1,
     marginHorizontal: 10,
-    padding: 10,
-    backgroundColor: Colors.light,
-    width: "auto",
+    fontFamily: "Poppins-Regular",
+    color: Colors.light,
   },
-  roundBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 20,
+  buttonContainer: {
     alignItems: "center",
     justifyContent: "center",
-  },
-  buttonView: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
+    paddingHorizontal: 5,
+    borderRadius: 20,
+    backgroundColor: "#1E272A",
+    width: 50,
+    height: 50,
   },
 });
+
 export default MessageInput;

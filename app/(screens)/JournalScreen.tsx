@@ -419,11 +419,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "flex-end",
     flexDirection: "row",
+    fontFamily: "Poppins-Regular",
   },
   input: {
     color: Colors.light,
     textAlign: "left",
-    fontSize: 20,
+    fontSize: 18,
+    fontFamily: "Poppins-Regular",
   },
   promptContainer: {
     borderRadius: 10,
@@ -443,10 +445,10 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(252, 252, 252, 0.2)",
   },
   promptText: {
-    fontSize: 20,
-    fontWeight: "500",
+    fontSize: 16,
     textAlign: "auto",
     color: Colors.light,
+    fontFamily: "Poppins-Bold",
   },
   triggerButton: {
     flexDirection: "row",
@@ -459,7 +461,7 @@ const styles = StyleSheet.create({
   triggerText: {
     fontSize: 16,
     color: Colors.light,
-    fontWeight: "bold",
+    fontFamily: "Poppins-Bold",
   },
   scrollContainer: {
     paddingHorizontal: 16,
