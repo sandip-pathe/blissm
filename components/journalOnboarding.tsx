@@ -22,7 +22,7 @@ const JournalOnboarding = () => {
         <Text style={styles.buttonText}>Start New Journal</Text>
       </TouchableOpacity>
       <View style={styles.howItWorksContainer}>
-        <Text style={styles.howItWorksTitle}>🛠 How It Works</Text>
+        <Text style={styles.howItWorksTitle}>How It Works</Text>
         <Text style={styles.howItWorksText}>
           1️⃣ <Text style={styles.howItWorksText2}>Start a new journal</Text>
         </Text>

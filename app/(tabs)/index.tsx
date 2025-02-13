@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 18,
-    color: Colors.light,
+    color: Colors.greyLight,
     paddingVertical: 10,
     fontFamily: "Poppins-Regular",
   },

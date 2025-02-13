@@ -44,7 +44,7 @@ interface localGPTs {
 }
 
 const ChatDashboardScreen: React.FC = () => {
-  const [viewMode, setViewMode] = useState("grid");
+  const [viewMode, setViewMode] = useState("list");
   const [gptModels, setGptModels] = useState<onlineGPTs[]>([]);
   const [localChats, setLocalChats] = useState<localGPTs[]>([]);
   const router = useRouter();
@@ -428,7 +428,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 18,
-    color: Colors.light,
+    color: Colors.greyLight,
     paddingVertical: 10,
     fontFamily: "Poppins-Regular",
   },

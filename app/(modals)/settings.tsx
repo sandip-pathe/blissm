@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -5,23 +6,25 @@ import {
   TouchableOpacity,
   Alert,
   Switch,
-  FlatList,
-  Modal,
   TextInput,
 } from "react-native";
-import React, { useState, useEffect } from "react";
 import { Stack, useRouter } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { signOut, deleteUser } from "firebase/auth";
-import { FIREBASE_APP, FIREBASE_AUTH, FIRESTORE_DB } from "@/FirebaseConfig";
+import Colors from "../../constants/Colors";
+import { FIREBASE_AUTH, FIRESTORE_DB } from "@/FirebaseConfig";
 import { useCustomAuth } from "@/components/authContext";
 import { clearAllData } from "@/database/sqlite";
-import { SQLiteDatabase, useSQLiteContext } from "expo-sqlite";
-import Colors from "../../constants/Colors";
-import { getFirestore, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { useSQLiteContext } from "expo-sqlite";
 import Avatar from "@/components/Avatar";
 
-const Profile = () => {
+import {
+  updateUserProfile,
+  logoutUser,
+  deleteUserAccount,
+  clearCacheData,
+} from "./profileHelpers";
+
+const Profile: React.FC = () => {
   const { currentUser, refreshUserProfile } = useCustomAuth();
   const router = useRouter();
   const db = useSQLiteContext();
@@ -32,21 +35,20 @@ const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [fullName, setFullName] = useState(currentUser?.fullName || "");
   const [contact, setContact] = useState(currentUser?.contact || "");
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null);
 
-  const avatars = ["flower", "flower-tulip", "tree"];
+  useEffect(() => {
+    console.log(currentUser);
+  }, [currentUser]);
 
   const handleUpdateProfile = async () => {
-    setIsEditing(false);
-    if (!fullName.trim()) {
-      Alert.alert("Error", "Name cannot be empty.");
-      return;
-    }
     try {
-      const userRef = doc(FIRESTORE_DB, "users", auth.currentUser!.uid);
-      await updateDoc(userRef, { fullName, contact });
-      await refreshUserProfile();
+      await updateUserProfile(
+        fullName,
+        contact,
+        FIRESTORE_DB,
+        auth,
+        refreshUserProfile
+      );
       setIsEditing(false);
       Alert.alert("Success", "Profile updated successfully.");
     } catch (error) {
@@ -54,9 +56,9 @@ const Profile = () => {
     }
   };
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
     Alert.alert(
-      "LogOut?",
+      "Log Out?",
       "Are you sure you want to log out? You may lose your data.",
       [
         { text: "Cancel", style: "cancel" },
@@ -66,8 +68,7 @@ const Profile = () => {
           onPress: async () => {
             setIsDeleting(true);
             try {
-              await signOut(auth);
-              router.replace("/(modals)/login");
+              await logoutUser(auth, router);
             } catch (error) {
               Alert.alert("Error", "Failed to sign out.");
             } finally {
@@ -79,7 +80,7 @@ const Profile = () => {
     );
   };
 
-  const handleDelete = async () => {
+  const handleDeleteCache = () => {
     Alert.alert(
       "Confirm Deletion",
       "Are you sure you want to delete all data? This action cannot be undone.",
@@ -91,7 +92,7 @@ const Profile = () => {
           onPress: async () => {
             setIsDeleting(true);
             try {
-              await clearAllData(db);
+              await clearCacheData(clearAllData, db);
               Alert.alert("Success", "All data has been deleted.");
             } catch (error) {
               Alert.alert("Error", "Failed to delete data.");
@@ -104,7 +105,7 @@ const Profile = () => {
     );
   };
 
-  const handleDeleteAccount = async () => {
+  const handleDeleteAccount = () => {
     Alert.alert(
       "Delete Account",
       "This will permanently delete your account and all associated data. Continue?",
@@ -116,14 +117,13 @@ const Profile = () => {
           onPress: async () => {
             setIsDeleting(true);
             try {
-              const user = auth.currentUser;
-              if (user) {
-                const userRef = doc(FIRESTORE_DB, "users", user.uid);
-                await deleteDoc(userRef);
-                await deleteUser(user);
-                await clearAllData(db);
-                router.replace("/(modals)/login");
-              }
+              await deleteUserAccount(
+                auth,
+                FIRESTORE_DB,
+                clearAllData,
+                db,
+                router
+              );
             } catch (error) {
               Alert.alert("Error", "Failed to delete account.");
             } finally {
@@ -139,17 +139,12 @@ const Profile = () => {
     <>
       <Stack.Screen options={{ headerShown: true, title: "Settings" }} />
       <View style={styles.itemContainer}>
-        <TouchableOpacity onPress={() => setIsModalVisible(true)}>
+        <View>
           <Avatar title={fullName} imageUrl={""} size={50} />
-        </TouchableOpacity>
+        </View>
         <TouchableOpacity
           onPress={() => setIsEditing(true)}
-          style={{
-            flex: 1,
-            flexDirection: "row",
-            gap: 10,
-            alignItems: "center",
-          }}
+          style={styles.editButton}
         >
           <Text style={styles.nameText}>{fullName || "Set Name"}</Text>
           <MaterialCommunityIcons
@@ -187,49 +182,43 @@ const Profile = () => {
           </TouchableOpacity>
         </View>
       )}
-
       <View style={styles.settingsList}>
         <View style={styles.settingItem}>
           <Ionicons name="moon" size={24} color={Colors.light} />
-          <View style={{ flex: 1 }}>
+          <View style={styles.settingLabelContainer}>
             <Text style={styles.settingText}>Dark Mode</Text>
           </View>
           <Switch
             value={isDarkMode}
-            style={{ transform: [{ scaleX: 1.2 }, { scaleY: 1.2 }] }}
+            style={styles.switchStyle}
             onValueChange={() => setIsDarkMode(!isDarkMode)}
           />
         </View>
-
-        {/* Clear Cache */}
         <TouchableOpacity
           style={styles.settingItem}
-          onPress={handleDelete}
+          onPress={handleDeleteCache}
           disabled={isDeleting}
         >
           <Ionicons name="trash-bin" size={24} color={Colors.light} />
-          <View>
+          <View style={styles.settingLabelContainer}>
             <Text style={styles.settingText}>Clear Cache</Text>
             <Text style={styles.badgeText}>Delete all SQL data</Text>
           </View>
         </TouchableOpacity>
-
-        {/* Log Out */}
         <TouchableOpacity style={styles.settingItem} onPress={handleLogout}>
           <Ionicons name="log-out-sharp" size={24} color={Colors.light} />
-          <View>
+          <View style={styles.settingLabelContainer}>
             <Text style={styles.settingText}>Log Out</Text>
             <Text style={styles.badgeText}>Sign out of your account</Text>
           </View>
         </TouchableOpacity>
-
-        {/* Delete Account */}
         <TouchableOpacity
           style={styles.settingItem}
           onPress={handleDeleteAccount}
+          disabled
         >
           <Ionicons name="close-circle" size={24} color="red" />
-          <View>
+          <View style={styles.settingLabelContainer}>
             <Text style={[styles.settingText, { color: "red" }]}>
               Delete Account
             </Text>
@@ -239,42 +228,6 @@ const Profile = () => {
           </View>
         </TouchableOpacity>
       </View>
-
-      <Modal
-        visible={isModalVisible}
-        animationType="slide"
-        style={styles.modalContainer}
-        transparent
-      >
-        <View style={styles.modalContent}>
-          <TouchableOpacity
-            style={{ padding: 10 }}
-            onPress={() => setIsModalVisible(false)}
-          >
-            <Ionicons name="close" size={24} color={Colors.light} />
-          </TouchableOpacity>
-          <FlatList
-            numColumns={8}
-            data={avatars}
-            keyExtractor={(item, index) => index.toString()}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                onPress={() => {
-                  setSelectedAvatar(item);
-                  setIsModalVisible(false);
-                }}
-              >
-                <MaterialCommunityIcons
-                  name={item as any}
-                  size={30}
-                  color={selectedAvatar === item ? Colors.primary : Colors.pink}
-                  style={{ padding: 10 }}
-                />
-              </TouchableOpacity>
-            )}
-          />
-        </View>
-      </Modal>
     </>
   );
 };
@@ -282,50 +235,22 @@ const Profile = () => {
 export default Profile;
 
 const styles = StyleSheet.create({
-  modalContent: {
-    backgroundColor: Colors.lightPink,
-    borderRadius: 10,
-    marginVertical: "auto",
-    marginHorizontal: 20,
-    width: "auto",
-    height: "50%",
-  },
-  modalContainer: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 999,
-  },
-  btnOutline: {
-    borderColor: Colors.gold,
-    borderWidth: 1,
-    height: 30,
-    borderRadius: 13,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 10,
-  },
-  btnOutlineText: {
-    color: Colors.light,
-    fontSize: 16,
-  },
   itemContainer: {
     flexDirection: "row",
     alignItems: "center",
     padding: 16,
     gap: 20,
-    justifyContent: "flex-start",
   },
-  detailsContainer: {
-    marginLeft: 16,
-    marginRight: 16,
+  editButton: {
+    flex: 1,
+    flexDirection: "row",
+    gap: 10,
+    alignItems: "center",
   },
   nameText: {
     color: Colors.accent,
     fontSize: 24,
     fontWeight: "bold",
-  },
-  emailText: {
-    color: Colors.light,
-    fontSize: 14,
   },
   settingsList: {
     paddingHorizontal: 16,
@@ -335,6 +260,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 15,
+  },
+  settingLabelContainer: {
+    flex: 1,
   },
   settingText: {
     fontSize: 18,
@@ -359,13 +287,16 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     backgroundColor: Colors.accent2,
-    borderColor: Colors.accent2,
-    borderWidth: 1,
     borderRadius: 5,
     padding: 10,
+    alignItems: "center",
   },
   saveText: {
     color: "white",
     textAlign: "center",
+    fontSize: 16,
+  },
+  switchStyle: {
+    transform: [{ scaleX: 1.2 }, { scaleY: 1.2 }],
   },
 });

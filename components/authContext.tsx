@@ -35,7 +35,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Function to fetch user profile from Firestore
   const fetchUserProfile = async (userId: string) => {
     try {
       const userDocRef = doc(db, "users", userId);

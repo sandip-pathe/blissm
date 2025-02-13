@@ -335,6 +335,7 @@ const styles = StyleSheet.create({
   flashListContent: {
     paddingTop: 10,
     paddingBottom: 20,
+    zIndex: 5,
   },
   loading: {
     justifyContent: "center",

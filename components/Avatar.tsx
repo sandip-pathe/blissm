@@ -12,7 +12,7 @@ const COLORS = [
 ];
 
 const getInitials = (title?: string): string => {
-  if (!title) return "AA"; // Default initials
+  if (!title) return "NA"; // Default initials
   const words = title.trim().split(/\s+/);
   return words.length >= 2
     ? (words[0][0] + words[1][0]).toUpperCase()
@@ -50,7 +50,7 @@ const Avatar = ({
         { backgroundColor, width: size, height: size, borderRadius: size / 2 },
       ]}
     >
-      <Text style={[styles.text, { fontSize: size / 2.5 }]}>{initials}</Text>
+      <Text style={[styles.text, { fontSize: size / 2 }]}>{initials}</Text>
     </View>
   );
 };
@@ -62,10 +62,10 @@ const styles = StyleSheet.create({
   },
   text: {
     color: "white",
-    fontWeight: "bold",
+    fontFamily: "Poppins-Bold",
   },
   image: {
-    borderRadius: 50, // Circular
+    borderRadius: 50,
     resizeMode: "cover",
   },
 });

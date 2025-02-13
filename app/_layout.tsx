@@ -64,7 +64,6 @@ const RootLayoutNav: React.FC<{ router: any }> = ({ router }) => {
       if (user) {
         router.push("/(tabs)");
       } else {
-        // User is not authenticated, navigate to the login screen
         router.replace("(modals)/login");
       }
     });

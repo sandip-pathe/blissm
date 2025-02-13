@@ -1,17 +1,19 @@
-import React, { useState, useCallback } from "react";
+import React, { useCallback } from "react";
 import {
   View,
-  TouchableOpacity,
   Text,
   StyleSheet,
   Modal,
   FlatList,
   Dimensions,
+  TouchableOpacity,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/Colors";
 
-interface BottomBarProps {
+interface ColorPickerModalProps {
+  visible: boolean;
+  onClose: () => void;
   onChangeBackgroundColor: (color: string) => void;
 }
 
@@ -48,101 +50,61 @@ const DARK_COLORS = [
   "#485053",
 ];
 
-const BottomBar: React.FC<BottomBarProps> = ({ onChangeBackgroundColor }) => {
-  const [modalVisible, setModalVisible] = useState(false);
+const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
+  visible,
+  onClose,
+  onChangeBackgroundColor,
+}) => {
   const colorBoxSize = (Dimensions.get("window").width - 40) / 5 - 8;
 
   const handleColorChange = useCallback(
     (color: string) => {
       onChangeBackgroundColor(color);
-      setModalVisible(false);
+      onClose(); // Close modal after selection
     },
-    [onChangeBackgroundColor]
+    [onChangeBackgroundColor, onClose]
   );
 
   return (
-    <>
-      {/* Floating Action Button */}
-      <View style={styles.bottomBar}>
-        <TouchableOpacity
-          style={styles.iconButton}
-          onPress={() => setModalVisible(true)}
-        >
-          <Ionicons name="color-palette-outline" size={35} color="white" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Color Picker Modal */}
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View
-          style={styles.modalOverlay}
-          onTouchEnd={() => setModalVisible(false)}
-        >
-          <View style={styles.modalContent}>
-            {/* Handle Bar */}
-            <View style={styles.handle} />
-
-            {/* Close Button */}
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setModalVisible(false)}
-            >
-              <Ionicons name="close-sharp" size={30} color={Colors.light} />
-            </TouchableOpacity>
-
-            {/* Modal Title */}
-            <Text style={styles.modalTitle}>Choose Background Color</Text>
-
-            {/* Color Options */}
-            <FlatList
-              data={DARK_COLORS}
-              numColumns={5}
-              contentContainerStyle={styles.colorGrid}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[
-                    styles.colorBox,
-                    {
-                      backgroundColor: item,
-                      width: colorBoxSize,
-                      height: colorBoxSize,
-                    },
-                  ]}
-                  onPress={() => handleColorChange(item)}
-                />
-              )}
-              keyExtractor={(item) => item}
-            />
-          </View>
+    <Modal visible={visible} transparent animationType="slide">
+      <View style={styles.modalOverlay} onTouchEnd={onClose}>
+        <View style={styles.modalContent}>
+          <View style={styles.handle} />
+          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+            <Ionicons name="close-sharp" size={30} color={Colors.light} />
+          </TouchableOpacity>
+          <Text style={styles.modalTitle}>Choose Background Color</Text>
+          <FlatList
+            data={DARK_COLORS}
+            numColumns={5}
+            contentContainerStyle={styles.colorGrid}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[
+                  styles.colorBox,
+                  {
+                    backgroundColor: item,
+                    width: colorBoxSize,
+                    height: colorBoxSize,
+                  },
+                ]}
+                onPress={() => handleColorChange(item)}
+              />
+            )}
+            keyExtractor={(item) => item}
+          />
         </View>
-      </Modal>
-    </>
+      </View>
+    </Modal>
   );
 };
 
-export default BottomBar;
+export default ColorPickerModal;
 
 const styles = StyleSheet.create({
-  bottomBar: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    position: "absolute",
-    bottom: 20,
-    right: 20,
-  },
-  iconButton: {
-    backgroundColor: Colors.accent,
-    padding: 12,
-    borderRadius: 50,
-    elevation: 5,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(1,1, 1, 0.5)",
+    backgroundColor: "rgba(1,1,1,0.5)",
     justifyContent: "flex-end",
   },
   modalContent: {

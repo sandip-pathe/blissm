@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
   Keyboard,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import Colors from "@/constants/Colors";
 import { Stack, useLocalSearchParams } from "expo-router";
 import {
@@ -28,7 +28,8 @@ import {
 import { useSQLiteContext } from "expo-sqlite";
 import { useFocusEffect } from "@react-navigation/native";
 import PromptsModal from "../(modals)/promptsModal";
-import BottomBar from "@/components/JournalBottomMenuBar";
+import ColorPickerModal from "@/components/JournalBottomMenuBar";
+import BouncingDotsLoader from "@/components/BouncingDotsLoader";
 
 const JournalScreen: React.FC = () => {
   const scrollRef = useRef<ScrollView>(null);
@@ -49,6 +50,7 @@ const JournalScreen: React.FC = () => {
   const [backgroundColor, setBackgroundColor] = useState<string>(
     Colors.primary
   );
+  const [modalVisible, setModalVisible] = useState<boolean>(false);
 
   const handlePromptSelect = (prompt: string) => {
     prompts[0] = prompt;
@@ -290,10 +292,6 @@ const JournalScreen: React.FC = () => {
     }
   };
 
-  const handleBackgroundColorChange = (color: string) => {
-    setBackgroundColor(color);
-  };
-
   return (
     <>
       <Stack.Screen
@@ -313,28 +311,12 @@ const JournalScreen: React.FC = () => {
                   })}
                 </Text>
               </View>
-              <TouchableOpacity
-                style={[
-                  styles.triggerButton,
-                  loadingPrompt || lastInput.length == 0
-                    ? styles.disabledButton
-                    : null,
-                ]}
-                onPress={handleTrigger}
-                disabled={loadingPrompt || lastInput.length == 0}
-              >
-                {loadingPrompt ? (
-                  <ActivityIndicator size="small" color={Colors.light} />
-                ) : (
-                  <>
-                    <Ionicons
-                      name="sparkles-outline"
-                      size={24}
-                      color={Colors.light}
-                    />
-                    <Text style={styles.triggerText}>Inspire Me</Text>
-                  </>
-                )}
+              <TouchableOpacity onPress={() => setModalVisible(true)}>
+                <Ionicons
+                  name="color-palette-outline"
+                  size={30}
+                  color={Colors.light}
+                />
               </TouchableOpacity>
             </View>
           ),
@@ -344,6 +326,11 @@ const JournalScreen: React.FC = () => {
         visible={showPromptsModal}
         onClose={() => setShowPromptsModal(false)}
         onSelectPrompt={handlePromptSelect}
+      />
+      <ColorPickerModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onChangeBackgroundColor={(color) => setBackgroundColor(color)}
       />
       <View style={[styles.container, { backgroundColor }]}>
         {loadingInitialization ? (
@@ -400,7 +387,28 @@ const JournalScreen: React.FC = () => {
             <View style={styles.spacer}></View>
           </ScrollView>
         )}
-        <BottomBar onChangeBackgroundColor={handleBackgroundColorChange} />
+        <TouchableOpacity
+          style={[
+            styles.iconButton,
+            loadingPrompt || lastInput.length == 0
+              ? styles.disabledButton
+              : null,
+          ]}
+          onPress={handleTrigger}
+          disabled={loadingPrompt || lastInput.length == 0}
+        >
+          {loadingPrompt ? (
+            <BouncingDotsLoader />
+          ) : (
+            <>
+              <MaterialCommunityIcons
+                name="send"
+                size={30}
+                color={Colors.light}
+              />
+            </>
+          )}
+        </TouchableOpacity>
       </View>
     </>
   );
@@ -412,6 +420,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.lightPink,
+  },
+  iconButton: {
+    position: "absolute",
+    bottom: 10,
+    right: 10,
+    backgroundColor: Colors.accent2,
+    padding: 12,
+    borderRadius: 50,
+    elevation: 5,
+    shadowColor: "#fff",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
   header: {
     width: "100%",
@@ -456,7 +477,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   disabledButton: {
-    opacity: 0.7,
+    opacity: 0.1,
   },
   triggerText: {
     fontSize: 16,

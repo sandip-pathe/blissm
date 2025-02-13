@@ -1,3 +1,4 @@
+// LoginScreen.tsx
 import React, { useState } from "react";
 import {
   View,
@@ -8,29 +9,25 @@ import {
   StyleSheet,
   Alert,
 } from "react-native";
+import { Stack, useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/Colors";
-import { FIREBASE_AUTH, FIRESTORE_DB } from "../../FirebaseConfig";
-import {
-  createUserWithEmailAndPassword,
-  sendEmailVerification,
-  signInWithEmailAndPassword,
-  User,
-} from "firebase/auth";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { FIREBASE_AUTH } from "@/FirebaseConfig";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import ForgotPasswordModal from "../(modals)/forgotPasswordModal";
 import { useCustomAuth } from "@/components/authContext";
 
-const AdminLogin = () => {
+const LoginScreen: React.FC = () => {
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const auth = FIREBASE_AUTH;
-  const db = FIRESTORE_DB;
   const { refreshUserProfile } = useCustomAuth();
+  const router = useRouter();
 
   const toggleForgotPasswordModal = () => {
-    setShowForgotPasswordModal(!showForgotPasswordModal);
+    setShowForgotPasswordModal((prev) => !prev);
   };
 
   const signIn = async () => {
@@ -38,15 +35,6 @@ const AdminLogin = () => {
     try {
       const response = await signInWithEmailAndPassword(auth, email, password);
       console.log("Sign-in successful:", response);
-
-      // if (!response.user.emailVerified) {
-      //   Alert.alert(
-      //     "Email Not Verified",
-      //     "Please verify your email before signing in."
-      //   );
-      //   await auth.signOut();
-      //   return;
-      // }
     } catch (error: any) {
       console.log(error);
       Alert.alert("Sign In Failed", error.message);
@@ -55,144 +43,73 @@ const AdminLogin = () => {
     }
   };
 
-  const signUp = async () => {
-    setLoading(true);
-    try {
-      const response = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-      console.log("User created:", response.user);
-
-      await saveUserData(response.user.uid); // Ensure Firestore profile is created
-
-      sendVerificationEmail(); // Send verification email
-
-      Alert.alert(
-        "Sign Up Successful",
-        "A verification email has been sent to your email address. Please verify your email before signing in."
-      );
-    } catch (error: any) {
-      console.log(error);
-      Alert.alert("Sign Up Failed", error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const sendVerificationEmail = async () => {
-    try {
-      const user = auth.currentUser;
-      await sendEmailVerification(user as User);
-    } catch (error) {
-      console.log("Error sending verification email:", error);
-    }
-  };
-
-  const saveUserData = async (userId: string) => {
-    try {
-      const userRef = doc(db, "users", userId);
-      const docSnap = await getDoc(userRef);
-
-      if (!docSnap.exists()) {
-        const userData = {
-          email: auth.currentUser?.email,
-          password: password,
-        };
-        await setDoc(userRef, userData);
-        console.log("New user data saved to Firestore");
-
-        await refreshUserProfile();
-      } else {
-        console.log("User data already exists in Firestore");
-      }
-    } catch (error) {
-      console.error("Error saving user data:", error);
-    }
-  };
-
   return (
-    <>
-      <View style={styles.container}>
-        <View style={{ gap: 20 }}>
-          <TextInput
-            autoCapitalize="none"
-            value={email}
-            placeholder="Email Address"
-            onChangeText={(text) => setEmail(text)}
-            style={styles.inputItem}
-            placeholderTextColor={Colors.light}
-            cursorColor={Colors.light}
-          />
-          <TextInput
-            autoCapitalize="none"
-            value={password}
-            placeholder="Password"
-            secureTextEntry={true}
-            onChangeText={(text) => setPassword(text)}
-            style={styles.inputItem}
-            placeholderTextColor={Colors.light}
-            cursorColor={Colors.light}
-          />
-          {loading ? (
-            <ActivityIndicator size="large" color={Colors.light} />
-          ) : (
-            <>
-              <TouchableOpacity style={styles.btn} onPress={signIn}>
-                <Text style={styles.btnText}>Sign In</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.btnOutline} onPress={signUp}>
-                <Text style={styles.btnOutlineText}>Sign Up</Text>
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
-
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "flex-end",
-            alignItems: "center",
-            paddingVertical: 30,
-          }}
-        >
-          <TouchableOpacity onPress={toggleForgotPasswordModal}>
-            <Text style={{ color: Colors.light }}>Forgot Password?</Text>
-          </TouchableOpacity>
-          <ForgotPasswordModal
-            visible={showForgotPasswordModal}
-            onClose={toggleForgotPasswordModal}
-          />
-        </View>
-        <View
-          style={{
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 40,
-            margin: 60,
-          }}
-        ></View>
-      </View>
-    </>
+    <View style={styles.container}>
+      <Stack.Screen options={{ headerShown: true, title: "Login" }} />
+      <TextInput
+        autoCapitalize="none"
+        value={email}
+        placeholder="Email Address"
+        onChangeText={setEmail}
+        style={styles.inputItem}
+        placeholderTextColor={Colors.light}
+        cursorColor={Colors.light}
+      />
+      <TextInput
+        autoCapitalize="none"
+        value={password}
+        placeholder="Password"
+        secureTextEntry={true}
+        onChangeText={setPassword}
+        style={styles.inputItem}
+        placeholderTextColor={Colors.light}
+        cursorColor={Colors.light}
+      />
+      {loading ? (
+        <ActivityIndicator size="large" color={Colors.light} />
+      ) : (
+        <TouchableOpacity style={styles.btn} onPress={signIn}>
+          <Text style={styles.btnText}>Sign In</Text>
+        </TouchableOpacity>
+      )}
+      <TouchableOpacity onPress={toggleForgotPasswordModal}>
+        <Text style={styles.forgotText}>Forgot Password?</Text>
+      </TouchableOpacity>
+      <ForgotPasswordModal
+        visible={showForgotPasswordModal}
+        onClose={toggleForgotPasswordModal}
+      />
+      <TouchableOpacity
+        style={styles.switchScreenButton}
+        onPress={() => router.push("/register")}
+      >
+        <Text style={styles.switchScreenText}>
+          Don't have an account? Sign Up
+        </Text>
+      </TouchableOpacity>
+    </View>
   );
 };
+
+export default LoginScreen;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 26,
     paddingTop: 60,
+    backgroundColor: Colors.primary,
   },
   inputItem: {
     color: Colors.light,
     borderBottomWidth: 1,
-    borderColor: Colors.light,
+    borderColor: Colors.accent2,
     padding: 5,
     marginBottom: 20,
+    fontFamily: "Poppins-Regular",
   },
   btn: {
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.accent2,
     padding: 12,
     borderRadius: 8,
     alignItems: "center",
@@ -200,25 +117,19 @@ const styles = StyleSheet.create({
   btnText: {
     color: Colors.light,
     fontSize: 16,
-    fontWeight: "bold",
+    fontFamily: "Poppins-Bold",
   },
-  btnOutline: {
-    borderWidth: 1,
-    borderColor: Colors.primary,
-    padding: 12,
-    borderRadius: 8,
+  forgotText: {
+    color: Colors.light,
+    textAlign: "right",
+    marginVertical: 30,
+  },
+  switchScreenButton: {
+    marginTop: 20,
     alignItems: "center",
   },
-  btnOutlineText: {
-    color: Colors.light,
+  switchScreenText: {
+    color: Colors.accent2,
     fontSize: 16,
-    fontWeight: "bold",
-  },
-  separator: {
-    marginVertical: 20,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: Colors.light,
   },
 });
-
-export default AdminLogin;
