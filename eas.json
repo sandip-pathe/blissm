@@ -1,0 +1,23 @@
+{
+  "build": {
+    "production": {
+      "distribution": "store",
+      "android": {
+        "gradleCommand": ":app:bundleRelease",
+        "env": {
+          "NODE_ENV": "production",
+          "ANDROID_SDK_ROOT": "/home/expo/android_sdk"
+        },
+        "buildType": "app-bundle"
+      }
+    },
+    "ios": {
+      "env": {
+        "NODE_ENV": "production"
+      }
+    }
+  },
+  "cli": {
+    "appVersionSource": "local"
+  }
+}

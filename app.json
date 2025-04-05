@@ -1,6 +1,7 @@
 {
   "expo": {
-    "name": "blissm",
+    "developmentClient": {},
+    "name": "Blissm",
     "slug": "blissm",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -9,13 +10,18 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.feat.sandip.blissm",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      }
+        "backgroundColor": "#5C99A8"
+      },
+      "package": "com.feat.sandip.blissm"
     },
     "web": {
       "bundler": "metro",
@@ -27,15 +33,27 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/adaptive-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#5C99A8"
         }
-      ]
+      ],
+      "expo-sqlite",
+      "expo-font",
+      "expo-localization",
+      "expo-video"
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "20fd86f8-782e-4816-9e48-27731a46b6b5"
+      }
     }
   }
 }
