@@ -18,7 +18,7 @@ import {
   Octicons,
 } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { OPENAI_API } from "@/constants/var";
+import { OPENAI_API } from "../../constants/key";
 import {
   addJournalContent,
   addJournalSession,

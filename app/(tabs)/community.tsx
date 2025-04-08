@@ -8,51 +8,106 @@ import {
   TextInput,
   Image,
   ActivityIndicator,
-  Button,
+  Animated,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useVideoPlayer, VideoView } from "expo-video";
-
 import { useRouter } from "expo-router";
 import { useTheme } from "@react-navigation/native";
-import { collection, getDocs, orderBy, query } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDocs,
+  updateDoc,
+  orderBy,
+  query,
+} from "firebase/firestore";
 import { FIRESTORE_DB } from "@/constants/firebaseConf";
 import formatDate from "@/constants/utils";
-import { useEvent } from "expo";
 
-const PostCard = ({ item, colors, router, expandedPosts, toggleExpand }) => {
+const PostCard = ({
+  item,
+  colors,
+  router,
+  expandedPosts,
+  toggleExpand,
+  handleLike,
+  userLocation,
+}) => {
   const styles = themedStyles(colors);
   const hasMedia = item.mediaUrl && item.mediaType;
+  const [isLiked, setIsLiked] = useState(false);
+  const [likeScale] = useState(new Animated.Value(1));
+  const distance =
+    userLocation && item.location
+      ? calculateDistance(
+          userLocation.latitude,
+          userLocation.longitude,
+          item.location.latitude,
+          item.location.longitude
+        )
+      : null;
+
+  const animateLike = () => {
+    Animated.sequence([
+      Animated.timing(likeScale, {
+        toValue: 1.3,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(likeScale, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const onLikePress = () => {
+    animateLike();
+    setIsLiked(!isLiked);
+    handleLike(item.id, isLiked ? -1 : 1);
+  };
 
   return (
-    <TouchableOpacity
-      onPress={() => router.navigate(`../(community)/${item.id}`)}
-      style={[styles.postCard, styles[item.type.toLowerCase()]]}
-      activeOpacity={0.8}
-    >
+    <View style={[styles.postCard]}>
+      <Text style={[styles.postType, typeStyles[item.type]]}>{item.type}</Text>
       <View style={styles.postHeader}>
-        <Text style={[styles.postType, typeStyles[item.type]]}>
-          {item.type}
-        </Text>
+        <View style={styles.authorContainer}>
+          <View style={styles.authorAvatar}>
+            <Ionicons
+              name="person-circle-outline"
+              size={24}
+              color={colors.text}
+            />
+          </View>
+          <View>
+            <Text style={styles.username}>
+              {item.author?.username || "Anonymous"}
+            </Text>
+          </View>
+        </View>
         <Text style={styles.postDate}>
           {formatDate(item.date) || "Unknown Date"}
         </Text>
       </View>
+      <TouchableOpacity
+        onPress={() => router.navigate(`../(community)/${item.id}`)}
+        activeOpacity={0.8}
+      >
+        <Text numberOfLines={2} style={styles.postTitle}>
+          {item.title || "Untitled Post"}
+        </Text>
 
-      <Text numberOfLines={2} style={styles.postTitle}>
-        {item.title || "Untitled Post"}
-      </Text>
-
-      {hasMedia && (
-        <View style={styles.mediaContainer}>
-          {item.mediaType.startsWith("image") ? (
-            <Image
-              source={{ uri: item.mediaUrl }}
-              style={styles.media}
-              resizeMode="cover"
-            />
-          ) : (
-            <>
+        {hasMedia && (
+          <View style={styles.mediaContainer}>
+            {item.mediaType.startsWith("image") ? (
+              <Image
+                source={{ uri: item.mediaUrl }}
+                style={styles.media}
+                resizeMode="cover"
+              />
+            ) : (
               <VideoView
                 style={styles.media}
                 player={useVideoPlayer(item.mediaUrl, (player) => {
@@ -62,63 +117,70 @@ const PostCard = ({ item, colors, router, expandedPosts, toggleExpand }) => {
                 allowsFullscreen
                 allowsPictureInPicture
               />
-              <View>
-                <Button title={true ? "Pause" : "Play"} />
-              </View>
-            </>
-          )}
-        </View>
-      )}
+            )}
+          </View>
+        )}
 
-      <Text
-        numberOfLines={expandedPosts[item.id] ? undefined : 3}
-        style={styles.postContent}
-      >
-        {item.content}
-      </Text>
+        <Text
+          numberOfLines={expandedPosts[item.id] ? undefined : 3}
+          style={styles.postContent}
+        >
+          {item.content}
+        </Text>
 
-      {item.content.length > 200 && (
-        <TouchableOpacity onPress={() => toggleExpand(item.id)}>
-          <Text style={styles.moreButton}>
-            {expandedPosts[item.id] ? "Show Less" : "Read More"}
-          </Text>
-        </TouchableOpacity>
-      )}
+        {item.content.length > 200 && (
+          <TouchableOpacity onPress={() => toggleExpand(item.id)}>
+            <Text style={styles.moreButton}>
+              {expandedPosts[item.id] ? "Show Less" : "Read More"}
+            </Text>
+          </TouchableOpacity>
+        )}
+      </TouchableOpacity>
 
       <View style={styles.postFooter}>
-        <View style={styles.reactionContainer}>
-          <Ionicons name="heart-outline" size={16} color={colors.text} />
-          <Text style={styles.reactionText}>{item.likes || 0}</Text>
-          <Ionicons
-            name="chatbubble-outline"
-            size={16}
-            color={colors.text}
-            style={styles.commentIcon}
-          />
+        <TouchableOpacity
+          style={styles.reactionButton}
+          onPress={onLikePress}
+          activeOpacity={0.7}
+        >
+          <Animated.View style={{ transform: [{ scale: likeScale }] }}>
+            <Ionicons
+              name={isLiked ? "heart" : "heart-outline"}
+              size={20}
+              color={isLiked ? "#ff4d4d" : colors.text}
+            />
+          </Animated.View>
+          <Text style={[styles.reactionText, isLiked && styles.likedText]}>
+            {item.likes || 0}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.reactionButton}
+          onPress={() => router.navigate(`../(community)/${item.id}`)}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="chatbubble-outline" size={18} color={colors.text} />
           <Text style={styles.reactionText}>{item.comments?.length || 0}</Text>
-        </View>
+        </TouchableOpacity>
+
+        {item.role == "professional" && (
+          <View style={styles.verifiedBadge}>
+            <Ionicons name="shield-checkmark" size={16} color="#4CAF50" />
+            <Text style={styles.verifiedText}>Professional</Text>
+          </View>
+        )}
       </View>
-    </TouchableOpacity>
+    </View>
   );
 };
-
-interface Post {
-  id: string;
-  title: string;
-  content: string;
-  type: string;
-  mediaUrl?: string;
-  mediaType?: string;
-  date: string;
-  likes?: number;
-  comments?: Array<any>;
-}
 
 const CommunityScreen: React.FC = () => {
   const [posts, setPosts] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("All");
   const [isLoading, setIsLoading] = useState(true);
+  const [userLocation, setUserLocation] = useState(null);
   const router = useRouter();
   const { colors } = useTheme();
   const styles = themedStyles(colors);
@@ -145,12 +207,32 @@ const CommunityScreen: React.FC = () => {
     fetchPosts();
   }, []);
 
+  const handleLike = async (postId, increment) => {
+    try {
+      const postRef = doc(FIRESTORE_DB, "community", postId);
+      await updateDoc(postRef, {
+        likes: increment + posts.find((p) => p.id === postId)?.likes || 0,
+      });
+
+      setPosts(
+        posts.map((post) =>
+          post.id === postId
+            ? { ...post, likes: (post.likes || 0) + increment }
+            : post
+        )
+      );
+    } catch (error) {
+      console.error("Error updating like:", error);
+    }
+  };
+
   const filteredPosts = posts.filter((post) => {
     const matchesTab = activeTab === "All" || post.type === activeTab;
     const matchesQuery =
       post.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       post.content?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      formatDate(post.date).toLowerCase().includes(searchQuery.toLowerCase());
+      formatDate(post.date).toLowerCase().includes(searchQuery.toLowerCase()) ||
+      post.author?.username?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesTab && matchesQuery;
   });
 
@@ -165,6 +247,7 @@ const CommunityScreen: React.FC = () => {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Finding supportive community...</Text>
       </View>
     );
   }
@@ -173,7 +256,7 @@ const CommunityScreen: React.FC = () => {
     <View style={styles.container}>
       <View style={styles.searchContainer}>
         <TextInput
-          placeholder="Search names, dates . . ."
+          placeholder="Search topics, posts..."
           placeholderTextColor={colors.border}
           style={styles.searchInput}
           value={searchQuery}
@@ -209,6 +292,14 @@ const CommunityScreen: React.FC = () => {
         ))}
       </View>
 
+      <View>
+        {userLocation && (
+          <Text style={styles.locationHeader}>
+            <Ionicons name="location" size={14} /> Near you
+          </Text>
+        )}
+      </View>
+
       <FlatList
         data={filteredPosts}
         renderItem={({ item }) => (
@@ -218,31 +309,53 @@ const CommunityScreen: React.FC = () => {
             router={router}
             expandedPosts={expandedPosts}
             toggleExpand={toggleExpand}
+            handleLike={handleLike}
+            userLocation={userLocation}
           />
         )}
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={styles.feedContainer}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons
-              name="document-text-outline"
-              size={48}
-              color={colors.border}
-            />
+            <Ionicons name="people-outline" size={48} color={colors.border} />
             <Text style={styles.noPostsText}>No posts found</Text>
             <Text style={styles.noPostsSubtext}>
-              {searchQuery ? "Try a different search" : "Be the first to post!"}
+              {searchQuery
+                ? "Try a different search"
+                : "Share your thoughts with the community"}
             </Text>
+            <TouchableOpacity
+              style={styles.createPostButton}
+              onPress={() => router.navigate("../(community)/new")}
+            >
+              <Text style={styles.createPostButtonText}>Create First Post</Text>
+            </TouchableOpacity>
           </View>
         }
-        ItemSeparatorComponent={() => (
-          <View style={{ height: 10, backgroundColor: colors.background }} />
-        )}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
         showsVerticalScrollIndicator={false}
       />
     </View>
   );
 };
+
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371; // Radius of the earth in km
+  const dLat = deg2rad(lat2 - lat1);
+  const dLon = deg2rad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(deg2rad(lat1)) *
+      Math.cos(deg2rad(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function deg2rad(deg) {
+  return deg * (Math.PI / 180);
+}
 
 export default CommunityScreen;
 
@@ -275,6 +388,7 @@ const themedStyles = (colors) =>
       backgroundColor: colors.card,
       borderRadius: 20,
       marginVertical: 10,
+      marginHorizontal: 16,
     },
     searchInput: {
       flex: 1,
@@ -319,13 +433,13 @@ const themedStyles = (colors) =>
     },
     postCard: {
       backgroundColor: colors.card,
+      paddingVertical: 24,
+      paddingHorizontal: 16,
     },
     postHeader: {
       flexDirection: "row",
       justifyContent: "space-between",
-      marginBottom: 8,
-      paddingHorizontal: 16,
-      paddingTop: 16,
+      marginVertical: 8,
     },
     postType: {
       fontFamily: "Poppins-Bold",
@@ -338,7 +452,6 @@ const themedStyles = (colors) =>
       fontFamily: "Poppins-Bold",
       fontSize: 18,
       lineHeight: 24,
-      paddingHorizontal: 16,
     },
     mediaContainer: {
       width: "100%",
@@ -352,11 +465,9 @@ const themedStyles = (colors) =>
     },
     postContent: {
       fontSize: 15,
-      marginBottom: 8,
       color: colors.text,
       fontFamily: "Poppins-Regular",
       lineHeight: 22,
-      paddingHorizontal: 16,
     },
     postDate: {
       fontSize: 12,
@@ -368,7 +479,6 @@ const themedStyles = (colors) =>
       justifyContent: "space-between",
       alignItems: "center",
       marginTop: 12,
-      paddingHorizontal: 16,
       paddingBottom: 16,
     },
     reactionContainer: {
@@ -385,22 +495,6 @@ const themedStyles = (colors) =>
     commentIcon: {
       marginLeft: 12,
     },
-    // question: {
-    //   borderTopWidth: 4,
-    //   borderTopColor: "#4CAF50",
-    // },
-    // story: {
-    //   borderTopWidth: 4,
-    //   borderTopColor: "#2196F3",
-    // },
-    // coping: {
-    //   borderTopWidth: 4,
-    //   borderTopColor: "#FF9800",
-    // },
-    // confession: {
-    //   borderTopWidth: 4,
-    //   borderTopColor: "#F44336",
-    // },
     noPostsText: {
       textAlign: "center",
       marginTop: 16,
@@ -419,7 +513,6 @@ const themedStyles = (colors) =>
       fontFamily: "Poppins-SemiBold",
       alignSelf: "flex-start",
       marginBottom: 8,
-      paddingHorizontal: 16,
     },
     createButton: {
       width: 40,
@@ -429,6 +522,80 @@ const themedStyles = (colors) =>
       marginRight: 8,
       justifyContent: "center",
       alignItems: "center",
+    },
+    loadingText: {
+      marginTop: 16,
+      color: colors.text,
+      fontFamily: "Poppins-Regular",
+    },
+    locationHeader: {
+      fontSize: 12,
+      color: colors.primary,
+      fontFamily: "Poppins-Regular",
+      marginTop: 4,
+    },
+    searchIcon: {
+      marginRight: 8,
+    },
+    authorContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    authorAvatar: {
+      marginRight: 8,
+    },
+    username: {
+      color: colors.text,
+      fontFamily: "Poppins-Regular",
+      fontSize: 14,
+    },
+    therapistBadge: {
+      color: "#4CAF50",
+      fontFamily: "Poppins-Bold",
+      fontSize: 12,
+    },
+    locationText: {
+      color: colors.border,
+      fontFamily: "Poppins-Regular",
+      fontSize: 10,
+    },
+    reactionButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginRight: 20,
+    },
+    likedText: {
+      color: "#ff4d4d",
+    },
+    verifiedBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginLeft: "auto",
+      backgroundColor: "#E8F5E9",
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 12,
+    },
+    verifiedText: {
+      color: "#4CAF50",
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 12,
+      marginLeft: 4,
+    },
+    createPostButton: {
+      backgroundColor: colors.primary,
+      paddingHorizontal: 24,
+      paddingVertical: 12,
+      borderRadius: 24,
+      marginTop: 24,
+    },
+    createPostButtonText: {
+      color: "#fff",
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 14,
+    },
+    separator: {
+      height: 8,
     },
   });
 

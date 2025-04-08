@@ -14,7 +14,7 @@ import {
   getFirestore,
   collection,
   addDoc,
-  Timestamp,
+  serverTimestamp,
 } from "firebase/firestore";
 import { useTheme } from "@react-navigation/native";
 import { router } from "expo-router";
@@ -35,18 +35,17 @@ const PostCreationPage = () => {
   const [mediaType, setMediaType] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(null);
-  const [uploadedMediaUrl, setUploadedMediaUrl] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const { colors } = useTheme();
   const styles = themedStyles(colors);
 
-  const uploadMedia = async (uri, type) => {
+  const uploadMedia = async (uri: string, type: string) => {
     if (!uri) return null;
     const auth = getAuth();
     const user = auth.currentUser;
     if (!user) {
       Alert.alert("Error", "You must be logged in to upload media.");
-      return;
+      return null;
     }
     setIsUploading(true);
     setUploadProgress(0);
@@ -54,14 +53,12 @@ const PostCreationPage = () => {
       const storage = getStorage();
       const mediaRef = ref(storage, `posts/${user.uid}/${Date.now()}`);
 
-      // Convert URI to Blob
       const response = await fetch(uri);
       const blob = await response.blob();
 
-      // Upload with progress tracking
       const uploadTask = uploadBytesResumable(mediaRef, blob);
 
-      return new Promise((resolve, reject) => {
+      return new Promise<string>((resolve, reject) => {
         uploadTask.on(
           "state_changed",
           (snapshot) => {
@@ -76,9 +73,8 @@ const PostCreationPage = () => {
           },
           async () => {
             const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
-            setUploadedMediaUrl(downloadUrl);
             setIsUploading(false);
-            setUploadProgress(null);
+            setUploadProgress(0);
             resolve(downloadUrl);
           }
         );
@@ -90,11 +86,11 @@ const PostCreationPage = () => {
     }
   };
 
-  // Function to Handle Post
   const handlePost = async () => {
     setIsSubmitting(true);
     if (!postType || !title || !content) {
       Alert.alert("Error", "Please fill all required fields.");
+      setIsSubmitting(false);
       return;
     }
 
@@ -102,22 +98,29 @@ const PostCreationPage = () => {
     const user = auth.currentUser;
     if (!user) {
       Alert.alert("Error", "You must be logged in to create a post.");
+      setIsSubmitting(false);
       return;
     }
 
-    let finalMediaUrl = uploadedMediaUrl;
-    if (mediaUri && !uploadedMediaUrl) {
-      finalMediaUrl = await uploadMedia(mediaUri, mediaType);
+    let mediaUrl = null;
+    if (mediaUri && mediaType) {
+      mediaUrl = await uploadMedia(mediaUri, mediaType);
+      if (!mediaUrl) {
+        setIsSubmitting(false);
+        return;
+      }
     }
 
     const newPost = {
+      type: postType,
       title,
       content,
-      type: postType,
-      date: Timestamp.now().toDate().toISOString(),
-      likes: 0,
-      uid: user.uid,
-      ...(finalMediaUrl && { mediaUrl: finalMediaUrl }),
+      date: serverTimestamp(),
+      likes: [], // Initialize as empty array
+      commentsCount: 0, // Initialize as 0
+      userId: user.uid,
+      userName: user.displayName || "Anonymous",
+      ...(mediaUrl && { mediaUrl }),
       ...(mediaType && { mediaType }),
     };
 
@@ -125,43 +128,47 @@ const PostCreationPage = () => {
       const db = getFirestore();
       await addDoc(collection(db, "community"), newPost);
       resetForm();
-      router.push("../(tabs)/community");
+      router.back();
     } catch (error) {
       console.error("Error adding post:", error);
-      Alert.alert("Error", "Failed to add post. Please try again.");
+      Alert.alert("Error", "Failed to create post. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Function to Pick Media
   const pickMedia = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images", "videos"],
-      allowsMultipleSelection: false,
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permissionResult.granted) {
+      Alert.alert(
+        "Permission required",
+        "Need camera roll access to add media"
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
       allowsEditing: true,
+      aspect: [4, 3],
       quality: 1,
     });
 
-    if (!result.canceled) {
+    if (!result.canceled && result.assets.length > 0) {
       const asset = result.assets[0];
       setMediaUri(asset.uri);
       setMediaType(
         asset.type || (asset.uri.endsWith(".mp4") ? "video" : "image")
       );
-
-      // Upload media immediately
-      uploadMedia(asset.uri, asset.type);
     }
   };
 
-  // Function to Remove Media
   const removeMedia = () => {
     setMediaUri(null);
     setMediaType(null);
-    setUploadedMediaUrl(null);
-    setUploadProgress(0);
   };
+
   const resetForm = () => {
     setTitle("");
     setContent("");
@@ -220,7 +227,7 @@ const PostCreationPage = () => {
                 <Ionicons name="videocam" size={40} color={colors.text} />
               </View>
             )}
-            {uploadProgress !== null && (
+            {uploadProgress > 0 && uploadProgress < 100 && (
               <View style={styles.uploadProgressContainer}>
                 <ActivityIndicator size="small" color={colors.primary} />
                 <Text style={styles.uploadProgressText}>
@@ -231,13 +238,17 @@ const PostCreationPage = () => {
             <TouchableOpacity
               style={styles.removeMediaButton}
               onPress={removeMedia}
-              disabled={uploadProgress !== null}
+              disabled={isUploading}
             >
               <Ionicons name="close" size={20} color="white" />
             </TouchableOpacity>
           </View>
         ) : (
-          <TouchableOpacity style={styles.addMediaButton} onPress={pickMedia}>
+          <TouchableOpacity
+            style={styles.addMediaButton}
+            onPress={pickMedia}
+            disabled={isUploading}
+          >
             <Ionicons name="add" size={24} color={colors.primary} />
             <Text style={styles.addMediaText}>Add Photo/Video</Text>
           </TouchableOpacity>
@@ -250,7 +261,7 @@ const PostCreationPage = () => {
         disabled={isSubmitting || isUploading}
       >
         {isSubmitting ? (
-          <ActivityIndicator color={colors.text} />
+          <ActivityIndicator color="white" />
         ) : (
           <Text style={styles.submitButtonText}>Post</Text>
         )}
@@ -294,7 +305,7 @@ const themedStyles = (colors) =>
       fontWeight: "600",
     },
     activeTabText: {
-      color: "#fff",
+      color: "white",
     },
     input: {
       backgroundColor: colors.card,
@@ -341,7 +352,7 @@ const themedStyles = (colors) =>
       borderRadius: 10,
     },
     videoPlaceholder: {
-      backgroundColor: colors.card,
+      backgroundColor: "rgba(0,0,0,0.1)",
       justifyContent: "center",
       alignItems: "center",
     },
@@ -361,8 +372,6 @@ const themedStyles = (colors) =>
       padding: 15,
       borderRadius: 10,
       alignItems: "center",
-      justifyContent: "center",
-      height: 50,
     },
     submitButtonText: {
       color: "white",
@@ -371,13 +380,17 @@ const themedStyles = (colors) =>
     },
     uploadProgressContainer: {
       position: "absolute",
-      top: "40%",
-      left: "40%",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      justifyContent: "center",
       alignItems: "center",
+      backgroundColor: "rgba(0,0,0,0.3)",
     },
     uploadProgressText: {
-      color: "#fff",
-      fontSize: 12,
+      color: "white",
+      marginTop: 5,
       fontWeight: "bold",
     },
   });

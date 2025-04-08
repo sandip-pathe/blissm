@@ -27,7 +27,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { FIRESTORE_DB } from "../../constants/firebaseConf";
 import BouncingDotsLoader from "@/components/BouncingDotsLoader";
 import DisclaimerModal from "@/app/(modals)/Desclaimer";
-import { OPENAI_API } from "@/constants/var";
+import { OPENAI_API } from "../../constants/key";
 import { posthog } from "@/constants/posthogConfig";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {

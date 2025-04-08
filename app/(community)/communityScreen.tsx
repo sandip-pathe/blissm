@@ -11,6 +11,7 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
+  Animated,
 } from "react-native";
 import { Foundation, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -38,23 +39,23 @@ interface Comment {
   userImage?: string;
   content: string;
   createdAt: Date;
-  likes: string[];
+  likes?: string[];
   replies?: Comment[];
   isExpanded?: boolean;
 }
 
 interface PostData {
   id: string;
-  type: string;
-  title: string;
-  content: string;
-  date: Date;
-  likes: string[];
-  commentsCount: number;
+  type?: string;
+  title?: string;
+  content?: string;
+  date?: Date;
+  likes?: string[];
+  commentsCount?: number;
   mediaUrl?: string;
   mediaType?: string;
-  userId: string;
-  userName: string;
+  userId?: string;
+  userName?: string;
   userImage?: string;
 }
 
@@ -71,6 +72,10 @@ const PostView = () => {
   const [isCommenting, setIsCommenting] = useState(false);
   const { colors } = useTheme();
   const styles = themedStyles(colors);
+  const [replyingToComment, setReplyingToComment] = useState<Comment | null>(
+    null
+  );
+  const [likeAnim] = useState(new Animated.Value(1));
 
   useEffect(() => {
     if (!id) return;
@@ -80,10 +85,20 @@ const PostView = () => {
         const postRef = doc(FIRESTORE_DB, "community", id);
         const unsubscribePost = onSnapshot(postRef, (docSnap) => {
           if (docSnap.exists()) {
-            const postData = docSnap.data() as PostData;
+            const postData = docSnap.data();
             setPost({
-              ...postData,
               id: docSnap.id,
+              type: postData.type || "Story",
+              title: postData.title || "",
+              content: postData.content || "",
+              date: postData.date?.toDate() || new Date(),
+              likes: postData.likes || [],
+              commentsCount: postData.commentsCount || 0,
+              mediaUrl: postData.mediaUrl,
+              mediaType: postData.mediaType,
+              userId: postData.userId,
+              userName: postData.userName || "Anonymous",
+              userImage: postData.userImage,
             });
           } else {
             Alert.alert("Post not found", "The requested post does not exist.");
@@ -109,8 +124,12 @@ const PostView = () => {
     const unsubscribeComments = onSnapshot(commentsRef, (snapshot) => {
       const fetchedComments = snapshot.docs.map((doc) => ({
         id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt.toDate(),
+        userId: doc.data().userId || "",
+        userName: doc.data().userName || "Anonymous",
+        userImage: doc.data().userImage,
+        content: doc.data().content || "",
+        createdAt: doc.data().createdAt?.toDate() || new Date(),
+        likes: doc.data().likes || [],
         replies: [],
         isExpanded: false,
       })) as Comment[];
@@ -160,40 +179,6 @@ const PostView = () => {
     }
   };
 
-  const handleAddComment = async () => {
-    if (!newComment.trim() || !currentUser || !id) return;
-
-    setIsCommenting(true);
-    try {
-      const commentsRef = collection(FIRESTORE_DB, `community/${id}/comments`);
-      await addDoc(commentsRef, {
-        userId: currentUser.uid,
-        userName: currentUser.name || "Anonymous",
-        content: newComment,
-        createdAt: serverTimestamp(),
-        likes: [],
-      });
-
-      // Update comment count
-      const postRef = doc(FIRESTORE_DB, "community", id);
-      await runTransaction(FIRESTORE_DB, async (transaction) => {
-        const postDoc = await transaction.get(postRef);
-        if (postDoc.exists()) {
-          transaction.update(postRef, {
-            commentsCount: (postDoc.data().commentsCount || 0) + 1,
-          });
-        }
-      });
-
-      setNewComment("");
-    } catch (error) {
-      console.error("Error adding comment:", error);
-      Alert.alert("Error", "Failed to add comment");
-    } finally {
-      setIsCommenting(false);
-    }
-  };
-
   const handleAddReply = async (parentCommentId: string) => {
     if (!replyContent.trim() || !currentUser || !id || !parentCommentId) return;
 
@@ -218,38 +203,6 @@ const PostView = () => {
       Alert.alert("Error", "Failed to add reply");
     } finally {
       setIsCommenting(false);
-    }
-  };
-
-  const toggleLikePost = async () => {
-    if (!id || !currentUser) return;
-    if (isLiking) return;
-
-    setIsLiking(true);
-    const postRef = doc(FIRESTORE_DB, "community", id);
-
-    try {
-      await runTransaction(FIRESTORE_DB, async (transaction) => {
-        const postSnap = await transaction.get(postRef);
-        if (!postSnap.exists()) return;
-
-        const postData = postSnap.data();
-        const currentLikes = postData.likes || [];
-
-        if (true) {
-          transaction.update(postRef, {
-            likes: arrayRemove(currentUser.uid),
-          });
-        } else {
-          transaction.update(postRef, {
-            likes: arrayUnion(currentUser.uid),
-          });
-        }
-      });
-    } catch (error) {
-      console.error("Error toggling like:", error);
-    } finally {
-      setIsLiking(false);
     }
   };
 
@@ -284,6 +237,158 @@ const PostView = () => {
     } catch (error) {
       console.error("Error toggling comment like:", error);
     }
+  };
+
+  const animateLike = () => {
+    Animated.sequence([
+      Animated.timing(likeAnim, {
+        toValue: 1.2,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(likeAnim, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const toggleLikePost = async () => {
+    if (!id || !currentUser) return;
+    if (isLiking) return;
+
+    animateLike();
+    setIsLiking(true);
+    const postRef = doc(FIRESTORE_DB, "community", id);
+
+    try {
+      await runTransaction(FIRESTORE_DB, async (transaction) => {
+        const postSnap = await transaction.get(postRef);
+        if (!postSnap.exists()) return;
+
+        const postData = postSnap.data();
+        const currentLikes = postData.likes || [];
+        const isLiked = currentLikes.includes(currentUser.uid);
+
+        transaction.update(postRef, {
+          likes: isLiked
+            ? arrayRemove(currentUser.uid)
+            : arrayUnion(currentUser.uid),
+        });
+      });
+    } catch (error) {
+      console.error("Error toggling like:", error);
+    } finally {
+      setIsLiking(false);
+    }
+  };
+
+  const handleAddComment = async () => {
+    if (!newComment.trim() || !currentUser || !id) return;
+
+    setIsCommenting(true);
+    try {
+      if (replyingToComment) {
+        // Handle reply
+        const repliesRef = collection(
+          FIRESTORE_DB,
+          `community/${id}/comments/${replyingToComment.id}/replies`
+        );
+        await addDoc(repliesRef, {
+          userId: currentUser.uid,
+          userName: currentUser.name || "Anonymous",
+          content: newComment,
+          createdAt: serverTimestamp(),
+          likes: [],
+        });
+      } else {
+        // Handle top-level comment
+        const commentsRef = collection(
+          FIRESTORE_DB,
+          `community/${id}/comments`
+        );
+        await addDoc(commentsRef, {
+          userId: currentUser.uid,
+          userName: currentUser.name || "Anonymous",
+          content: newComment,
+          createdAt: serverTimestamp(),
+          likes: [],
+        });
+
+        // Update comment count only for top-level comments
+        const postRef = doc(FIRESTORE_DB, "community", id);
+        await runTransaction(FIRESTORE_DB, async (transaction) => {
+          const postDoc = await transaction.get(postRef);
+          if (postDoc.exists()) {
+            transaction.update(postRef, {
+              commentsCount: (postDoc.data().commentsCount || 0) + 1,
+            });
+          }
+        });
+      }
+
+      setNewComment("");
+      setReplyingToComment(null);
+    } catch (error) {
+      console.error("Error adding comment:", error);
+      Alert.alert("Error", "Failed to add comment");
+    } finally {
+      setIsCommenting(false);
+    }
+  };
+
+  const renderComment = (comment: Comment) => {
+    const isCommentLiked =
+      currentUser && comment.likes?.includes(currentUser.uid);
+    const hasReplies = comment.replies && comment.replies.length > 0;
+
+    return (
+      <View key={comment.id} style={styles.commentContainer}>
+        <View style={styles.commentHeader}>
+          <View style={styles.avatarPlaceholderSmall}>
+            <Ionicons name="person" size={16} color={colors.text} />
+          </View>
+          <Text style={styles.commentAuthor}>{comment.userName}</Text>
+          <Text style={styles.commentTime}>
+            {formatDate(comment.createdAt)}
+          </Text>
+        </View>
+        <Text style={styles.commentText}>{comment.content}</Text>
+
+        <View style={styles.commentActions}>
+          <TouchableOpacity
+            onPress={() => toggleLikeComment(comment.id)}
+            style={styles.commentActionButton}
+          >
+            <Animated.View style={{ transform: [{ scale: likeAnim }] }}>
+              <Ionicons
+                name={isCommentLiked ? "heart" : "heart-outline"}
+                size={16}
+                color={isCommentLiked ? "#FF5252" : colors.text}
+              />
+            </Animated.View>
+            <Text style={styles.commentActionText}>
+              {comment.likes?.length || 0}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setReplyingToComment(comment)}
+            style={styles.commentActionButton}
+          >
+            <MaterialIcons name="reply" size={16} color={colors.text} />
+            <Text style={styles.commentActionText}>Reply</Text>
+          </TouchableOpacity>
+        </View>
+
+        {hasReplies && (
+          <View style={styles.repliesContainer}>
+            {comment.replies.map((reply) => renderComment(reply))}
+          </View>
+        )}
+      </View>
+    );
   };
 
   if (loading) {
@@ -324,17 +429,25 @@ const PostView = () => {
       style={{ flex: 1 }}
     >
       <ScrollView style={styles.container}>
+        {true && (
+          <View style={styles.verifiedBadge}>
+            <Ionicons name="shield-checkmark" size={16} color="#4CAF50" />
+            <Text style={styles.verifiedText}>Professional</Text>
+          </View>
+        )}
         <View style={styles.postHeader}>
           <View style={styles.userInfo}>
             <View style={styles.avatarPlaceholder}>
               <Ionicons name="person" size={24} color={colors.text} />
             </View>
             <View>
-              <Text style={styles.userName}>{"Anonymous"}</Text>
+              <Text style={styles.userName}>{userName}</Text>
               <Text style={styles.postDate}>{formatDate(date)}</Text>
             </View>
           </View>
-          <View style={[styles.postTypeBadge, typeStyles[type]]}>
+          <View
+            style={[styles.postTypeBadge, typeStyles[type] || typeStyles.Story]}
+          >
             <Text style={styles.postTypeText}>{type}</Text>
           </View>
         </View>
@@ -374,7 +487,7 @@ const PostView = () => {
               size={24}
               color={isLiked ? "#FF5252" : colors.text}
             />
-            <Text style={styles.actionText}>{likes.length}</Text>
+            <Text style={styles.actionText}>{likes?.length || 0}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionButton}>
@@ -387,142 +500,11 @@ const PostView = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Comments Section */}
         <View style={styles.commentsHeader}>
-          <Text style={styles.sectionTitle}>Comments</Text>
+          <Text style={styles.sectionTitle}>Comments ({commentsCount})</Text>
         </View>
 
-        {/* Comments List */}
-        {comments.map((comment) => (
-          <View key={comment.id} style={styles.commentContainer}>
-            <View style={styles.commentHeader}>
-              <View style={styles.avatarPlaceholderSmall}>
-                <Ionicons name="person" size={16} color={colors.text} />
-              </View>
-              <Text style={styles.commentAuthor}>{comment.userName}</Text>
-              <Text style={styles.commentTime}>
-                {formatDate(comment.createdAt)}
-              </Text>
-            </View>
-            <Text style={styles.commentText}>{comment.content}</Text>
-
-            <View style={styles.commentActions}>
-              <TouchableOpacity
-                onPress={() => toggleLikeComment(comment.id)}
-                style={styles.commentActionButton}
-              >
-                <Ionicons
-                  name={currentUser && comments ? "heart" : "heart-outline"}
-                  size={16}
-                  color={currentUser && comments ? "#FF5252" : colors.text}
-                />
-                <Text style={styles.commentActionText}>
-                  {comment.likes.length}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => {
-                  setReplyingTo(replyingTo === comment.id ? null : comment.id);
-                  setReplyContent("");
-                }}
-                style={styles.commentActionButton}
-              >
-                <MaterialIcons name="reply" size={16} color={colors.text} />
-                <Text style={styles.commentActionText}>Reply</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Reply Input */}
-            {replyingTo === comment.id && (
-              <View style={styles.replyInputContainer}>
-                <TextInput
-                  placeholder="Write a reply..."
-                  value={replyContent}
-                  onChangeText={setReplyContent}
-                  style={styles.replyInput}
-                  multiline
-                />
-                <TouchableOpacity
-                  onPress={() => handleAddReply(comment.id)}
-                  disabled={!replyContent.trim() || isCommenting}
-                  style={[
-                    styles.replyButton,
-                    (!replyContent.trim() || isCommenting) &&
-                      styles.disabledButton,
-                  ]}
-                >
-                  {isCommenting ? (
-                    <ActivityIndicator size="small" color="white" />
-                  ) : (
-                    <Text style={styles.replyButtonText}>Post</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {/* Replies */}
-            {comment.isExpanded &&
-              comment.replies &&
-              comment.replies.length > 0 && (
-                <View style={styles.repliesContainer}>
-                  {comment.replies.map((reply) => (
-                    <View key={reply.id} style={styles.replyContainer}>
-                      <View style={styles.commentHeader}>
-                        <View style={styles.avatarPlaceholderSmall}>
-                          <Ionicons
-                            name="person"
-                            size={16}
-                            color={colors.text}
-                          />
-                        </View>
-                        <Text style={styles.commentAuthor}>
-                          {reply.userName}
-                        </Text>
-                        <Text style={styles.commentTime}>
-                          {formatDate(reply.createdAt)}
-                        </Text>
-                      </View>
-                      <Text style={styles.commentText}>{reply.content}</Text>
-                      <View style={styles.commentActions}>
-                        <TouchableOpacity
-                          onPress={() => toggleLikeComment(reply.id, true)}
-                          style={styles.commentActionButton}
-                        >
-                          <Ionicons
-                            name={
-                              currentUser && reply ? "heart" : "heart-outline"
-                            }
-                            size={16}
-                            color={
-                              currentUser && reply ? "#FF5252" : colors.text
-                            }
-                          />
-                          <Text style={styles.commentActionText}>
-                            {reply.likes.length}
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  ))}
-                </View>
-              )}
-
-            {/* View Replies Button */}
-            {comment.replies &&
-              comment.replies.length > 0 &&
-              !comment.isExpanded && (
-                <TouchableOpacity
-                  onPress={() => toggleCommentExpansion(comment.id)}
-                  style={styles.viewRepliesButton}
-                >
-                  <Text style={styles.viewRepliesText}>
-                    View {comment.replies.length} replies
-                  </Text>
-                </TouchableOpacity>
-              )}
-          </View>
-        ))}
+        {comments.map(renderComment)}
 
         {/* Empty State */}
         {comments.length === 0 && (
@@ -538,8 +520,23 @@ const PostView = () => {
 
       {/* Comment Input */}
       <View style={styles.commentInputContainer}>
+        {replyingToComment && (
+          <View style={styles.replyHeader}>
+            <Text style={styles.replyHeaderText}>
+              Replying to {replyingToComment.userName}
+            </Text>
+            <TouchableOpacity
+              onPress={() => setReplyingToComment(null)}
+              style={styles.closeReplyButton}
+            >
+              <Ionicons name="close" size={16} color={colors.text} />
+            </TouchableOpacity>
+          </View>
+        )}
         <TextInput
-          placeholder="Write a comment..."
+          placeholder={
+            replyingToComment ? "Write a reply..." : "Write a comment..."
+          }
           placeholderTextColor={colors.border}
           value={newComment}
           onChangeText={setNewComment}
@@ -815,6 +812,36 @@ const themedStyles = (colors) =>
     },
     disabledButton: {
       opacity: 0.5,
+    },
+    replyHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingBottom: 8,
+    },
+    replyHeaderText: {
+      color: colors.primary,
+      fontSize: 12,
+      fontWeight: "600",
+    },
+    closeReplyButton: {
+      padding: 4,
+    },
+    verifiedBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginLeft: "auto",
+      backgroundColor: "#E8F5E9",
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 12,
+      marginBottom: 8,
+    },
+    verifiedText: {
+      color: "#4CAF50",
+      fontFamily: "Poppins-SemiBold",
+      fontSize: 12,
+      marginLeft: 4,
     },
   });
 
