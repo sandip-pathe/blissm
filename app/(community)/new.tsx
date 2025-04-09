@@ -149,9 +149,9 @@ const PostCreationPage = () => {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      mediaTypes: ["images", "videos"],
+      allowsMultipleSelection: false,
       allowsEditing: true,
-      aspect: [4, 3],
       quality: 1,
     });
 

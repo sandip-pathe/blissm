@@ -18,7 +18,6 @@ import {
   Octicons,
 } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { OPENAI_API } from "../../constants/key";
 import {
   addJournalContent,
   addJournalSession,
@@ -46,6 +45,7 @@ import { useCustomAuth } from "@/components/authContext";
 import ActionModal from "../(modals)/actionModal";
 import AlertModal from "../(modals)/deleteModal";
 import { useColorScheme } from "@/hooks/useColorScheme";
+import Constants from "expo-constants";
 
 const getSettings = async () =>
   JSON.parse((await AsyncStorage.getItem("journalSettings")) || "{}") || {
@@ -61,6 +61,8 @@ export interface Message {
   edited?: number;
   reactions?: string;
 }
+
+const OPENAI_API = Constants?.expoConfig?.extra?.OPENAI_API;
 
 const JournalScreen: React.FC = () => {
   const { currentUser } = useCustomAuth();

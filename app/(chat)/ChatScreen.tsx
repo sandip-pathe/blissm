@@ -27,7 +27,6 @@ import { doc, getDoc } from "firebase/firestore";
 import { FIRESTORE_DB } from "../../constants/firebaseConf";
 import BouncingDotsLoader from "@/components/BouncingDotsLoader";
 import DisclaimerModal from "@/app/(modals)/Desclaimer";
-import { OPENAI_API } from "../../constants/key";
 import { posthog } from "@/constants/posthogConfig";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
@@ -37,6 +36,7 @@ import {
 } from "./chatHelper";
 import { useCustomAuth } from "@/components/authContext";
 import { useTheme } from "@react-navigation/native";
+import Constants from "expo-constants";
 
 export enum Role {
   User = 0,
@@ -60,6 +60,8 @@ const DEFAULT_SETTINGS = {
 };
 
 const API_URL = "https://api.openai.com/v1/chat/completions";
+
+const OPENAI_API = Constants?.expoConfig?.extra?.OPENAI_API;
 
 const ChatPage = () => {
   const { currentUser } = useCustomAuth();

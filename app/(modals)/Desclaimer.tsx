@@ -1,5 +1,12 @@
 import React from "react";
-import { Modal, View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import {
+  Modal,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Linking,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@react-navigation/native";
 
@@ -14,6 +21,21 @@ const DisclaimerModal: React.FC<DisclaimerModalProps> = ({
 }) => {
   const { colors } = useTheme();
   const styles = themedStyles(colors);
+
+  const handlePrivacyPolicy = () => {
+    Linking.openURL("https://sandip-pathe.github.io/rescue/privacy-policy");
+  };
+
+  const handleContactSupport = () => {
+    Linking.openURL("mailto:sandip.pathe@example.com");
+  };
+
+  const handleWhatsApp = () => {
+    Linking.openURL(
+      "https://wa.me/918767394523?text=Hello%20Blissm%20Support!"
+    );
+  };
+
   return (
     <Modal visible={visible} transparent>
       <View style={styles.overlay}>
@@ -32,7 +54,10 @@ const DisclaimerModal: React.FC<DisclaimerModalProps> = ({
             concerns, contact our support team.
           </Text>
           <View style={styles.buttonContainer}>
-            <TouchableOpacity style={styles.button}>
+            <TouchableOpacity
+              style={styles.button}
+              onPress={handlePrivacyPolicy}
+            >
               <Text style={styles.buttonText}>Privacy Policy</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -43,11 +68,14 @@ const DisclaimerModal: React.FC<DisclaimerModalProps> = ({
             </TouchableOpacity>
           </View>
           <View style={styles.additionalLinks}>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={handlePrivacyPolicy}>
               <Text style={styles.linkText}>Terms of Service</Text>
             </TouchableOpacity>
-            <TouchableOpacity>
-              <Text style={styles.linkText}>Contact Support</Text>
+            <TouchableOpacity onPress={handleContactSupport}>
+              <Text style={styles.linkText}>Email Support</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleWhatsApp}>
+              <Text style={styles.linkText}>WhatsApp</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -63,6 +91,7 @@ const themedStyles = (colors) =>
     overlay: {
       flex: 1,
       justifyContent: "flex-end",
+      backgroundColor: "rgba(0,0,0,0.5)",
     },
     handle: {
       width: 80,
@@ -117,6 +146,7 @@ const themedStyles = (colors) =>
       flexDirection: "row",
       justifyContent: "center",
       alignItems: "center",
+      flexWrap: "wrap",
     },
     linkText: {
       color: colors.border,
@@ -124,6 +154,7 @@ const themedStyles = (colors) =>
       textDecorationLine: "underline",
       marginHorizontal: 10,
       fontFamily: "Poppins-Regular",
+      marginVertical: 5,
     },
     closeButton: {
       position: "absolute",

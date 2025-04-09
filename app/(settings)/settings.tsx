@@ -6,9 +6,16 @@ import {
   TouchableOpacity,
   Alert,
   TextInput,
+  Linking,
+  Animated,
 } from "react-native";
 import { Stack, useRouter } from "expo-router";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import {
+  AntDesign,
+  FontAwesome,
+  Ionicons,
+  MaterialCommunityIcons,
+} from "@expo/vector-icons";
 import { useCustomAuth } from "@/components/authContext";
 import { clearAllData, inspectDatabase } from "@/database/sqlite";
 import { useSQLiteContext } from "expo-sqlite";
@@ -30,7 +37,6 @@ const Profile: React.FC = () => {
   const router = useRouter();
   const db = useSQLiteContext();
   const auth = FIREBASE_AUTH;
-  const [isDeleting, setIsDeleting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(currentUser?.name || "");
   const [contact, setContact] = useState(currentUser?.contact || "");
@@ -93,7 +99,6 @@ const Profile: React.FC = () => {
   };
 
   const handleDeleteAccount = () => {
-    setIsDeleting(true);
     showAlert(
       "Delete Account",
       "This will permanently delete your account and all associated data. Continue?",
@@ -150,6 +155,37 @@ const Profile: React.FC = () => {
     },
   ];
 
+  const FounderSupportButton = () => {
+    const handlePress = () => {
+      Linking.openURL(
+        "https://wa.me/918767394523?text=Hi%20Blissm%20Founder,%20I%20need%20help%20with%20..."
+      );
+    };
+
+    return (
+      <TouchableOpacity
+        onPress={handlePress}
+        style={[
+          styles.founderSupportButton,
+          { backgroundColor: colors.background },
+        ]}
+      >
+        <View style={styles.founderSupportContent}>
+          <FontAwesome name="whatsapp" size={24} color={"#25d366"} />
+          <View style={styles.founderSupportText}>
+            <Text style={[styles.founderSupportTitle, { color: "#25d366" }]}>
+              Founder Support
+            </Text>
+            <Text style={[styles.founderSupportSubtitle, { color: "#25d366" }]}>
+              Chat directly with our founder
+            </Text>
+          </View>
+          <Ionicons name="arrow-forward-circle" size={24} color={"#25d366"} />
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <>
       <ScrollView>
@@ -196,18 +232,21 @@ const Profile: React.FC = () => {
         )}
         <View style={styles.settingsList}>
           {!isEditing && (
-            <TouchableOpacity
-              style={styles.premiumBanner}
-              onPress={() => router.navigate("./premium")}
-            >
-              <Text style={styles.premiumTitle}>🌟 Premium Access</Text>
-              <Text style={styles.premiumSubtitle}>
-                Exclusive Tools & Features
-              </Text>
-              <View style={styles.premiumCTA}>
-                <Text style={styles.premiumCTAText}>Upgrade Now</Text>
-              </View>
-            </TouchableOpacity>
+            <>
+              <TouchableOpacity
+                style={styles.premiumBanner}
+                onPress={() => router.navigate("./premium")}
+              >
+                <Text style={styles.premiumTitle}>🌟 Premium Access</Text>
+                <Text style={styles.premiumSubtitle}>
+                  Exclusive Tools & Features
+                </Text>
+                <View style={styles.premiumCTA}>
+                  <Text style={styles.premiumCTAText}>Upgrade Now</Text>
+                </View>
+              </TouchableOpacity>
+              <FounderSupportButton />
+            </>
           )}
           {settingsOptions.map(
             ({ title, badge, icon, action, disabled }, index) => (
@@ -242,6 +281,18 @@ const Profile: React.FC = () => {
               </TouchableOpacity>
             )
           )}
+        </View>
+        <View style={{ marginTop: "auto", padding: 16 }}>
+          <Text
+            style={styles.linkText}
+            onPress={() =>
+              Linking.openURL(
+                "https://sandip-pathe.github.io/rescue/privacy-policy"
+              )
+            }
+          >
+            Privacy Policy
+          </Text>
         </View>
       </ScrollView>
       <LanguagePreferenceModal
@@ -351,5 +402,37 @@ const themedStyles = (colors) =>
       fontSize: 16,
       fontFamily: "Poppins-Bold",
       color: colors.text,
+    },
+    termsText: {
+      fontSize: 12,
+      color: colors.text,
+      fontFamily: "Poppins-Regular",
+      flex: 1,
+    },
+    linkText: {
+      color: colors.primary,
+      textDecorationLine: "underline",
+    },
+    founderSupportButton: {
+      borderRadius: 12,
+      marginTop: 16,
+    },
+    founderSupportContent: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    founderSupportText: {
+      flex: 1,
+      marginHorizontal: 12,
+    },
+    founderSupportTitle: {
+      fontSize: 16,
+      fontFamily: "Poppins-Bold",
+    },
+    founderSupportSubtitle: {
+      fontSize: 12,
+      fontFamily: "Poppins-Regular",
+      opacity: 0.9,
     },
   });

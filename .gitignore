@@ -3,7 +3,7 @@
 # dependencies
 node_modules/
 
-constants/key.ts
+constants/apikey.ts
 
 # Expo
 .expo/
