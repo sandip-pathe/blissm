@@ -87,7 +87,6 @@ const ChatDashboardScreen: React.FC = () => {
     try {
       const chatSessions: localGPTs[] = await getAllChatSessions(db);
       setLocalChats(chatSessions);
-      console.log("Local chat sessions:", chatSessions);
     } catch (error) {
       console.error("Failed to load local chat sessions:", error);
     } finally {

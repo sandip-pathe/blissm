@@ -1,7 +1,6 @@
 import React from "react";
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import CustomTabBar from "@/components/CustomTabBar";
 import { useTheme } from "@react-navigation/native";
 
 const TabsLayout = () => {
@@ -43,9 +42,9 @@ const TabsLayout = () => {
         }}
       />
       <Tabs.Screen
-        name="community"
+        name="home"
         options={{
-          title: "Community",
+          title: "Home",
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? "heart" : "heart-outline"}

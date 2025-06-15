@@ -174,10 +174,10 @@ const Profile: React.FC = () => {
           <FontAwesome name="whatsapp" size={24} color={"#25d366"} />
           <View style={styles.founderSupportText}>
             <Text style={[styles.founderSupportTitle, { color: "#25d366" }]}>
-              Founder Support
+              Direct Support
             </Text>
             <Text style={[styles.founderSupportSubtitle, { color: "#25d366" }]}>
-              Chat directly with our founder
+              Chat directly with our team!
             </Text>
           </View>
           <Ionicons name="arrow-forward-circle" size={24} color={"#25d366"} />
@@ -282,7 +282,7 @@ const Profile: React.FC = () => {
             )
           )}
         </View>
-        <View style={{ marginTop: "auto", padding: 16 }}>
+        <View style={{ marginHorizontal: "auto", padding: 16 }}>
           <Text
             style={styles.linkText}
             onPress={() =>

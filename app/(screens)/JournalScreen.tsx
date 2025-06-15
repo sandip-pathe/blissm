@@ -64,6 +64,10 @@ export interface Message {
 
 const OPENAI_API = Constants?.expoConfig?.extra?.OPENAI_API;
 
+if (!OPENAI_API) {
+  throw new Error("OPENAI_API is not defined in JournalScreen.");
+}
+
 const JournalScreen: React.FC = () => {
   const { currentUser } = useCustomAuth();
   const scrollRef = useRef<ScrollView>(null);

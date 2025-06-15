@@ -1,19 +1,32 @@
 import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
-import { View, StyleSheet, TextInput, TouchableOpacity } from "react-native";
-import { useRef, useState } from "react";
+import {
+  View,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  Text,
+} from "react-native";
+import { useRef, useState, useEffect } from "react";
 import { useTheme } from "@react-navigation/native";
+import { Animated, Easing } from "react-native";
 
-export type Props = {
+interface MessageInputProps {
   onShouldSend: (message: string) => void;
-  onSendAudio: (audioUri: string) => void;
-  isLoading?: boolean;
-};
+  onRecordPress: () => void;
+  isLoading: boolean;
+  isRecording: boolean;
+}
 
-const MessageInput = ({ onShouldSend, onSendAudio, isLoading }: Props) => {
+const MessageInput = ({
+  onShouldSend,
+  onRecordPress,
+  isLoading,
+  isRecording,
+}: MessageInputProps) => {
   const [message, setMessage] = useState("");
   const inputRef = useRef<TextInput>(null);
-  const [recording, setRecording] = useState<null>(null);
   const { colors } = useTheme();
+  const scale = usePulseAnimation();
   const styles = themedStyles(colors);
 
   const onChangeText = (text: string) => {
@@ -27,25 +40,18 @@ const MessageInput = ({ onShouldSend, onSendAudio, isLoading }: Props) => {
     }
   };
 
-  const startRecording = async () => {
-    {
-    }
-  };
-
-  const stopRecording = async () => {
-    {
-    }
-  };
-
   return (
     <View style={styles.row}>
       <View style={styles.inputContainer}>
         <TextInput
           ref={inputRef}
-          placeholder="Message"
+          placeholder="What's on your mind?"
           style={styles.messageInput}
           onChangeText={onChangeText}
           value={message}
+          numberOfLines={5}
+          autoFocus
+          scrollEnabled
           multiline
           cursorColor={colors.text}
           placeholderTextColor={colors.border}
@@ -59,19 +65,53 @@ const MessageInput = ({ onShouldSend, onSendAudio, isLoading }: Props) => {
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
-            onPress={recording ? stopRecording : startRecording}
+            onPress={onRecordPress}
             disabled={isLoading}
+            style={styles.recordButton}
           >
-            <FontAwesome5
-              name="microphone"
-              size={24}
-              color={recording ? colors.notification : colors.primary}
-            />
+            {isRecording ? (
+              <View style={styles.recordingIndicator}>
+                <View style={styles.recordingDot} />
+                <Text style={styles.recordingText}>Listening...</Text>
+                <Animated.View
+                  style={[styles.pulsatingCircle, { transform: [{ scale }] }]}
+                />
+              </View>
+            ) : (
+              <Ionicons name="mic" size={28} color={colors.primary} />
+            )}
           </TouchableOpacity>
         )}
       </View>
     </View>
   );
+};
+
+const usePulseAnimation = () => {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(scale, {
+          toValue: 1.5,
+          duration: 750,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(scale, {
+          toValue: 1,
+          duration: 750,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [scale]);
+
+  return scale;
 };
 
 const themedStyles = (colors) =>
@@ -98,6 +138,10 @@ const themedStyles = (colors) =>
       marginHorizontal: 10,
       fontFamily: "Poppins-Regular",
       color: colors.text,
+      minWidth: 100,
+      maxHeight: 100,
+      minHeight: 40,
+      fontSize: 16,
     },
     buttonContainer: {
       alignItems: "center",
@@ -107,6 +151,32 @@ const themedStyles = (colors) =>
       backgroundColor: colors.card,
       width: 50,
       height: 50,
+    },
+    recordingIndicator: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    recordingDot: {
+      width: 12,
+      height: 12,
+      borderRadius: 6,
+      backgroundColor: "red",
+      marginRight: 8,
+    },
+    recordingText: {
+      color: "red",
+      fontWeight: "500",
+    },
+    recordButton: {
+      padding: 10,
+      marginRight: 8,
+    },
+    pulsatingCircle: {
+      position: "absolute",
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      backgroundColor: "rgba(255, 0, 0, 0.3)",
     },
   });
 

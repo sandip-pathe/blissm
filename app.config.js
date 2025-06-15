@@ -3,7 +3,8 @@ export default ({ config }) => {
     ...config,
     extra: {
       ...config.extra,
-      OPENAI_API: process.env.OPENAI_API, // pull from EAS secrets
+      OPENAI_API: process.env.OPENAI_API,
+      GEMINI_API: process.env.GEMINI_API,
     },
   };
 };

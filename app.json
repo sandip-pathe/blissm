@@ -17,11 +17,12 @@
       }
     },
     "android": {
+      "versionCode": 2,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#5C99A8"
       },
-      "package": "com.feat.sandip.blissm"
+      "package": "com.blissm.blissm"
     },
     "web": {
       "bundler": "metro",
@@ -42,7 +43,13 @@
       "expo-sqlite",
       "expo-font",
       "expo-localization",
-      "expo-video"
+      "expo-secure-store",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

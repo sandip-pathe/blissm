@@ -402,8 +402,7 @@ const themedStyles = (colors) =>
       flexDirection: "row",
       justifyContent: "space-between",
       marginBottom: 10,
-      borderRadius: 12,
-      padding: 4,
+      paddingHorizontal: 16,
     },
     tab: {
       paddingVertical: 4,
