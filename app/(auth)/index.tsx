@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,9 +11,20 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { FIREBASE_AUTH } from "@/constants/firebaseConf";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import {
+  signInWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithCredential,
+} from "firebase/auth";
 import ForgotPasswordModal from "../(modals)/forgotPasswordModal";
 import { useTheme } from "@react-navigation/native";
+import * as WebBrowser from "expo-web-browser";
+import * as Google from "expo-auth-session/providers/google";
+
+WebBrowser.maybeCompleteAuthSession();
+
+const GOOGLE_WEB_CLIENT_ID =
+  "829531939481-srl2pcq4vpke70pgrdpnr3hakn8hrp7l.apps.googleusercontent.com";
 
 const index = () => {
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
@@ -21,12 +32,31 @@ const index = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = themedStyles(colors);
+
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    clientId: GOOGLE_WEB_CLIENT_ID,
+  });
+
+  useEffect(() => {
+    if (response?.type === "success") {
+      const { id_token } = response.params;
+      const credential = GoogleAuthProvider.credential(id_token);
+      signInWithCredential(FIREBASE_AUTH, credential)
+        .then((userCred) => {
+          console.log("✅ Firebase login success:", userCred.user.email);
+        })
+        .catch((err) => {
+          console.error("❌ Firebase login error:", err);
+          Alert.alert("Google Sign In Failed", err.message);
+        });
+    }
+  }, [response]);
 
   const toggleForgotPasswordModal = () => {
     setShowForgotPasswordModal((prev) => !prev);
   };
-  const { colors } = useTheme();
-  const styles = themedStyles(colors);
 
   const signIn = async () => {
     setLoading(true);
@@ -74,9 +104,14 @@ const index = () => {
       {loading ? (
         <ActivityIndicator size="large" color={colors.text} />
       ) : (
-        <TouchableOpacity style={styles.btn} onPress={signIn}>
-          <Text style={styles.btnText}>Sign In</Text>
-        </TouchableOpacity>
+        <>
+          <TouchableOpacity style={styles.btn} onPress={signIn}>
+            <Text style={styles.btnText}>Sign In</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.btn} onPress={() => promptAsync()}>
+            <Text style={styles.btnText}>Sign In with Google</Text>
+          </TouchableOpacity>
+        </>
       )}
       <TouchableOpacity onPress={toggleForgotPasswordModal}>
         <Text style={styles.forgotText}>Forgot Password?</Text>

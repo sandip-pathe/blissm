@@ -42,9 +42,9 @@ const TabsLayout = () => {
         }}
       />
       <Tabs.Screen
-        name="home"
+        name="community"
         options={{
-          title: "Home",
+          title: "Community",
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? "heart" : "heart-outline"}

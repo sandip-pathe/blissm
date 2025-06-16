@@ -5,8 +5,9 @@ import {
   FlatList,
   TouchableOpacity,
   Text,
+  Button,
   Alert,
-  Linking,
+  ActivityIndicator,
 } from "react-native";
 import {
   Stack,
@@ -39,23 +40,8 @@ import {
 import { useCustomAuth } from "@/components/authContext";
 import { useTheme } from "@react-navigation/native";
 import Constants from "expo-constants";
-import {
-  useAudioRecorder,
-  AudioModule,
-  RecordingPresets,
-  AudioPlayer,
-} from "expo-audio";
-import {
-  createAudioPlayerFromBase64,
-  textToSpeech,
-  getBase64FromUri,
-  speechToText,
-  requestRecordingPermissions,
-  checkRecordingPermissions,
-  withTimeout,
-  stopRecording,
-} from "@/constants/audioUtils";
-import * as Network from "expo-network";
+import * as FileSystem from "expo-file-system";
+import { Audio } from "expo-av";
 
 export enum Role {
   User = 0,
@@ -80,10 +66,26 @@ const DEFAULT_SETTINGS = {
 
 const API_URL = "https://api.openai.com/v1/chat/completions";
 
+const GOOGLE_SPEECH_API_KEY =
+  Constants?.expoConfig?.extra?.GOOGLE_SPEECH_API_KEY;
+const GOOGLE_TTS_API_KEY = Constants?.expoConfig?.extra?.GOOGLE_TTS_API_KEY;
+
+if (!GOOGLE_SPEECH_API_KEY) {
+  throw new Error("GOOGLE_SPEECH_API_KEY is not defined in ChatScreen.");
+}
+if (!GOOGLE_TTS_API_KEY) {
+  throw new Error("GOOGLE_TTS_API_KEY is not defined in ChatScreen.");
+}
+
 const OPENAI_API = Constants?.expoConfig?.extra?.OPENAI_API;
+const GCP_Project_API = Constants?.expoConfig?.extra?.GCP_Project_API;
 
 if (!OPENAI_API) {
   throw new Error("OPENAI_API_KEY is not error in ChatScreen.");
+}
+
+if (!GCP_Project_API) {
+  throw new Error("GCP_Project_API is not defined in ChatScreen.");
 }
 
 const ChatPage = () => {
@@ -101,15 +103,9 @@ const ChatPage = () => {
   const [disclaimerVisible, setDisclaimerVisible] = useState(false);
   const [systemInstruction, setSystemInstruction] = useState("");
   const [summaryInstructions, setSummaryInstructions] = useState("");
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [isRecording, setIsRecording] = useState(false);
-  const [recorder, setRecorder] = useState<any | null>(null);
-  const [isTTSPlaying, setIsTTSPlaying] = useState(false);
-  const [lastPlayedMessage, setLastPlayedMessage] = useState("");
-  const [hasMicPermission, setHasMicPermission] = useState<boolean | null>(
-    null
-  );
-  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
-  const networkState = Network.useNetworkState();
+  const [isProcessing, setIsProcessing] = useState(false);
   const [settings, setSettings] = useState({
     messagesLimit: 50,
     hideOlderChats: false,
@@ -125,14 +121,6 @@ const ChatPage = () => {
     ({ item }) => <ChatMessage fontSize={16} {...item} />,
     []
   );
-
-  const soundRef = useRef<AudioPlayer | null>(null);
-
-  const recorderRef = useRef(audioRecorder);
-
-  useEffect(() => {
-    recorderRef.current = audioRecorder;
-  }, [audioRecorder]);
 
   useEffect(() => {
     setLoadingInitialization(true);
@@ -376,137 +364,129 @@ const ChatPage = () => {
     }
   };
 
-  useEffect(() => {
-    const checkPermissions = async () => {
-      const hasPermission = await checkRecordingPermissions();
-      setHasMicPermission(hasPermission);
-      console.log("Microphone permission status:", hasPermission);
-      if (!hasPermission) {
-        console.warn("Microphone permission not granted, requesting...");
-        const granted = await requestRecordingPermissions();
-        setHasMicPermission(granted);
-      }
-    };
-
-    checkPermissions();
-  }, []);
-
-  // Helper to stop recorder and get base64 audio
-  const stopAndGetBase64 = async (recorderInstance: any) => {
-    if (!recorderInstance) throw new Error("No recorder instance");
-    const recordingUri = await stopRecording(recorderInstance);
-    if (!recordingUri) throw new Error("No recording URI");
-    const base64 = await getBase64FromUri(recordingUri);
-    return base64;
-  };
-
-  const handleRecordPress = async () => {
-    console.log("[handleRecordPress] networkState:", networkState);
-    if (!networkState.isConnected) {
-      Alert.alert("Offline", "Voice features require internet connection");
-      return;
-    }
-
-    if (isRecording) {
-      console.log("[handleRecordPress] Stopping recording...");
-      setIsRecording(false);
-      try {
-        console.log("[stop] recorder:", recorder);
-        const base64 = await withTimeout(stopAndGetBase64(recorder), 10000);
-        console.log("[stop] base64 length:", base64?.length);
-        if (!base64) throw new Error("No audio recorded");
-
-        const transcript = await speechToText(base64);
-        console.log("[speechToText] transcript:", transcript);
-        if (transcript) {
-          fetchChatGPTCompletion(transcript);
-        } else {
-          console.warn("[speechToText] empty transcript");
-        }
-      } catch (err) {
-        console.error("[handleRecordPress] Error in stop flow:", err);
-        Alert.alert("Recording Error", err.message || "See console logs");
-      } finally {
-        setRecorder(null);
-      }
-      return;
-    }
-
-    console.log("[handleRecordPress] Starting recording...");
+  const startRecording = async () => {
     try {
-      const granted = hasMicPermission ?? (await checkRecordingPermissions());
-      console.log("[permissions] granted:", granted);
-      if (!granted) {
-        const newGrant = await requestRecordingPermissions();
-        console.log("[permissions] after request:", newGrant);
-        setHasMicPermission(newGrant);
-        if (!newGrant) throw new Error("Microphone permission denied");
-      }
+      const perm = await Audio.requestPermissionsAsync();
+      if (!perm.granted) throw new Error("Mic permission denied");
 
-      console.log("[prepare] recorderRef.current:", recorderRef.current);
-      await recorderRef.current.prepareToRecordAsync();
-      console.log("[record] starting...");
-      recorderRef.current.record();
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
 
-      setRecorder(recorderRef.current);
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      setRecording(recording);
       setIsRecording(true);
-      console.log("[record] in-progress");
-    } catch (err) {
-      console.error("[handleRecordPress] start error:", err);
-      setIsRecording(false);
-      Alert.alert("Recording Error", err.message || "See console logs");
+    } catch (e: any) {
+      Alert.alert("Error", e.message);
     }
   };
 
-  useEffect(() => {
-    const handleTTS = async () => {
-      if (
-        messages.length > 0 &&
-        messages[0].role === Role.Bot &&
-        messages[0].content !== lastPlayedMessage &&
-        !isTTSPlaying
-      ) {
-        const botResponse = messages[0].content;
-        setLastPlayedMessage(botResponse);
-        setIsTTSPlaying(true);
+  const stopRecording = async (): Promise<string | null> => {
+    if (!recording) return null;
+    try {
+      await recording.stopAndUnloadAsync();
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+      const uri = recording.getURI();
+      setRecording(null);
+      setIsRecording(false);
+      return uri ?? null;
+    } catch (e: any) {
+      Alert.alert("Error", e.message);
+      return null;
+    }
+  };
 
-        try {
-          const audioBase64 = await textToSpeech(botResponse);
-          if (audioBase64) {
-            // Clean up previous audio
-            if (soundRef.current) {
-              soundRef.current.release();
-              soundRef.current = null;
-            }
+  const runVoicePipeline = async () => {
+    const uri = await stopRecording();
+    if (!uri) return;
 
-            const player = await createAudioPlayerFromBase64(audioBase64);
-            if (player) {
-              soundRef.current = player;
-              await player.play();
-            }
-          }
-        } catch (error) {
-          console.error("TTS error", error);
-          Alert.alert("Voice Error", "Failed to generate speech");
-        } finally {
-          setIsTTSPlaying(false);
+    setIsProcessing(true);
+
+    try {
+      const buffer = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      // Step 1: Speech-to-Text
+      const sttRes = await fetch(
+        `https://speech.googleapis.com/v1/speech:recognize?key=${GOOGLE_SPEECH_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            config: {
+              encoding: "LINEAR16",
+              sampleRateHertz: 44100,
+              languageCode: "en-US",
+            },
+            audio: {
+              content: buffer,
+            },
+          }),
         }
-      }
-    };
-    handleTTS();
-  }, [messages]);
+      );
+      const sttData = await sttRes.json();
+      const userText =
+        sttData.results?.[0]?.alternatives?.[0]?.transcript ?? "";
+      if (!userText) throw new Error("No speech detected");
 
-  // Clean up audio resources
-  useEffect(() => {
-    return () => {
-      if (soundRef.current) {
-        soundRef.current.release();
-      }
-      if (recorder) {
-        stopRecording(recorder).catch(console.error);
-      }
-    };
-  }, []);
+      console.log("User said:", userText);
+
+      // Step 2: Send to LLM (OpenAI)
+      const llmRes = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${OPENAI_API}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4",
+          messages: [{ role: "user", content: userText }],
+        }),
+      });
+      const llmData = await llmRes.json();
+      const replyText = llmData.choices?.[0]?.message?.content ?? "Sorry!";
+
+      console.log("AI replied:", replyText);
+
+      // Step 3: TTS (Google)
+      const ttsRes = await fetch(
+        `https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_TTS_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            input: { text: replyText },
+            voice: {
+              languageCode: "en-US",
+              name: "en-US-Wavenet-D", // high-quality WaveNet voice
+            },
+            audioConfig: {
+              audioEncoding: "MP3",
+            },
+          }),
+        }
+      );
+      const ttsData = await ttsRes.json();
+      const audioBase64 = ttsData.audioContent;
+
+      const fileUri = FileSystem.cacheDirectory + "reply.mp3";
+      await FileSystem.writeAsStringAsync(fileUri, audioBase64, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      const { sound } = await Audio.Sound.createAsync({ uri: fileUri });
+      await sound.playAsync();
+    } catch (e: any) {
+      Alert.alert("Error", e.message ?? "Unknown error");
+      console.error("VoiceChat error", e);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   return (
     <>
@@ -574,13 +554,28 @@ const ChatPage = () => {
                 id={personaId}
               />
             )}
-            <View>
+            {/* <View>
               <MessageInput
                 isLoading={loading3}
                 isRecording={isRecording}
                 onShouldSend={fetchChatGPTCompletion}
-                onRecordPress={handleRecordPress}
+                onRecordPress={isRecording ? handleStop : startRecording}
               />
+            </View> */}
+
+            <View style={styles.container}>
+              <TouchableOpacity
+                style={isRecording ? styles.stopBtn : styles.recordBtn}
+                onPress={isRecording ? runVoicePipeline : startRecording}
+                disabled={isProcessing}
+              >
+                <Text style={styles.btnText}>
+                  {isRecording ? "Stop & Talk to AI" : "Start Talking"}
+                </Text>
+              </TouchableOpacity>
+              {isProcessing && (
+                <ActivityIndicator size="large" style={{ marginTop: 20 }} />
+              )}
             </View>
           </View>
         )}
@@ -636,5 +631,20 @@ const themedStyles = (colors) =>
     flashListContent: {
       paddingTop: 10,
       paddingBottom: 100,
+    },
+    recordBtn: {
+      padding: 16,
+      backgroundColor: "#26c6da",
+      borderRadius: 12,
+    },
+    stopBtn: {
+      padding: 16,
+      backgroundColor: "#ef5350",
+      borderRadius: 12,
+    },
+    btnText: {
+      fontSize: 18,
+      fontWeight: "bold",
+      color: "white",
     },
   });
