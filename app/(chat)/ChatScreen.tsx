@@ -5,9 +5,8 @@ import {
   FlatList,
   TouchableOpacity,
   Text,
-  Button,
-  Alert,
   ActivityIndicator,
+  Platform,
 } from "react-native";
 import {
   Stack,
@@ -17,7 +16,6 @@ import {
 } from "expo-router";
 import ChatMessage from "@/components/ChatMessage";
 import MessageIdeas from "@/components/MessageIdeas";
-import MessageInput from "@/components/MessageInput";
 import { defaultStyles } from "@/constants/Styles";
 import { useSQLiteContext } from "expo-sqlite";
 import {
@@ -88,6 +86,31 @@ if (!GCP_Project_API) {
   throw new Error("GCP_Project_API is not defined in ChatScreen.");
 }
 
+const RECORDING_OPTIONS: Audio.RecordingOptions = {
+  android: {
+    extension: ".flac",
+    outputFormat: Audio.AndroidOutputFormat.DEFAULT, // FLAC is a self-contained format
+    audioEncoder: Audio.AndroidAudioEncoder.DEFAULT,
+    sampleRate: 16000,
+    numberOfChannels: 1,
+  },
+  ios: {
+    // Keep iOS as WAV/LINEAR16 as it's the most reliable there
+    extension: ".wav",
+    audioQuality: Audio.IOSAudioQuality.HIGH,
+    sampleRate: 16000,
+    numberOfChannels: 1,
+    bitRate: 128000,
+    linearPCMBitDepth: 16,
+    linearPCMIsBigEndian: false,
+    linearPCMIsFloat: false,
+  },
+  web: {
+    mimeType: "audio/webm",
+    bitsPerSecond: 128000,
+  },
+};
+
 const ChatPage = () => {
   const { currentUser } = useCustomAuth();
   const [loading2, setLoading2] = useState(false);
@@ -114,6 +137,21 @@ const ChatPage = () => {
   const router = useRouter();
   const { colors } = useTheme();
   const styles = themedStyles(colors);
+  const [voiceStatus, setVoiceStatus] = useState<
+    "idle" | "listening" | "processing" | "speaking" | "error"
+  >("idle");
+  const [statusMessage, setStatusMessage] = useState("");
+  const [transcript, setTranscript] = useState("");
+  const [partialTranscript, setPartialTranscript] = useState("");
+  const [aiResponse, setAiResponse] = useState("");
+
+  // Refs for audio management
+  const recordingRef = useRef<Audio.Recording | null>(null);
+  const soundRef = useRef<Audio.Sound | null>(null);
+  const audioQueueRef = useRef<string[]>([]);
+  const isPlayingRef = useRef(false);
+  const isProcessingRef = useRef(false);
+  const lastUpdateTimeRef = useRef<number>(0);
 
   const toggleDisclaimer = () => setDisclaimerVisible((prev) => !prev);
 
@@ -364,129 +402,276 @@ const ChatPage = () => {
     }
   };
 
+  // Audio recording and processing functions
+
   const startRecording = async () => {
     try {
+      setVoiceStatus("listening");
+
+      setStatusMessage("Listening... Speak now");
+
+      setTranscript("");
+
+      setPartialTranscript("");
+
+      setAiResponse(""); // Request permissions
+
       const perm = await Audio.requestPermissionsAsync();
-      if (!perm.granted) throw new Error("Mic permission denied");
+
+      if (!perm.granted) {
+        throw new Error("Microphone permission not granted");
+      } // Configure audio mode
 
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
+
         playsInSilentModeIOS: true,
-      });
+
+        staysActiveInBackground: true,
+      }); // Start recording
 
       const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
+        RECORDING_OPTIONS
       );
-      setRecording(recording);
-      setIsRecording(true);
-    } catch (e: any) {
-      Alert.alert("Error", e.message);
+
+      recordingRef.current = recording;
+
+      lastUpdateTimeRef.current = Date.now();
+    } catch (error) {
+      console.error("Recording start failed:", error);
+
+      setVoiceStatus("error");
+
+      setStatusMessage("Failed to start recording");
     }
   };
 
-  const stopRecording = async (): Promise<string | null> => {
-    if (!recording) return null;
+  const handleVoicePressIn = () => {
+    startRecording();
+  };
+
+  const handleVoicePressOut = async () => {
+    // Pass the recording object to the pipeline BEFORE it's unloaded.
+    if (recordingRef.current) {
+      const recordingToProcess = recordingRef.current;
+      await stopRecording(); // This will set recordingRef.current to null
+      runVoicePipeline(recordingToProcess); // Process the saved reference
+    }
+  };
+
+  const stopRecording = async () => {
     try {
-      await recording.stopAndUnloadAsync();
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+      if (recordingRef.current) {
+        await recordingRef.current.stopAndUnloadAsync();
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+        });
+      }
+    } catch (error) {
+      console.error("Recording stop failed:", error);
+      setVoiceStatus("error");
+      setStatusMessage("Failed to stop recording");
+    }
+  };
+
+  const runVoicePipeline = async (recording) => {
+    try {
+      setVoiceStatus("processing");
+      setStatusMessage("Processing your request...");
+
       const uri = recording.getURI();
-      setRecording(null);
-      setIsRecording(false);
-      return uri ?? null;
-    } catch (e: any) {
-      Alert.alert("Error", e.message);
-      return null;
-    }
-  };
+      if (!uri) {
+        setVoiceStatus("idle");
+        return;
+      }
+      console.log("1. RECORDING URI:", uri); // DEBUG 1
 
-  const runVoicePipeline = async () => {
-    const uri = await stopRecording();
-    if (!uri) return;
+      const fileInfo = await FileSystem.getInfoAsync(uri);
+      console.log("2. FILE INFO:", fileInfo); // DEBUG 2
 
-    setIsProcessing(true);
+      if (!fileInfo.exists || fileInfo.size < 1024) {
+        // Keep this check
+        throw new Error("Recording was too short.");
+      }
 
-    try {
-      const buffer = await FileSystem.readAsStringAsync(uri, {
+      const base64Audio = await FileSystem.readAsStringAsync(uri, {
         encoding: FileSystem.EncodingType.Base64,
       });
+      console.log(
+        "3. BASE64 (First 100 Chars):",
+        base64Audio.substring(0, 100)
+      ); // DEBUG 3
 
-      // Step 1: Speech-to-Text
-      const sttRes = await fetch(
+      // Platform-specific config from Step 2
+      const sttConfig =
+        Platform.OS === "android"
+          ? {
+              // Android Config
+              encoding: "FLAC",
+              sampleRateHertz: 16000, // It's best to be explicit with FLAC
+              languageCode: "en-US",
+              enableAutomaticPunctuation: true,
+            }
+          : {
+              // iOS Config
+              encoding: "LINEAR16",
+              sampleRateHertz: 16000,
+              languageCode: "en-US",
+              enableAutomaticPunctuation: true,
+            };
+
+      const sttPayload = {
+        config: sttConfig,
+        audio: {
+          content: base64Audio,
+        },
+      };
+
+      console.log(
+        "4. GOOGLE STT PAYLOAD:",
+        JSON.stringify(sttPayload.config, null, 2)
+      ); // DEBUG 4
+
+      // Send to STT
+      setStatusMessage("Converting speech to text...");
+      const sttResponse = await fetch(
         `https://speech.googleapis.com/v1/speech:recognize?key=${GOOGLE_SPEECH_API_KEY}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(sttPayload),
+        }
+      );
+
+      const sttData = await sttResponse.json();
+      console.log(
+        "5. FULL GOOGLE STT RESPONSE:",
+        JSON.stringify(sttData, null, 2)
+      ); // DEBUG 5
+
+      // IMPORTANT: Check for an error object in the response
+      if (sttData.error) {
+        throw new Error(`Google API Error: ${sttData.error.message}`);
+      }
+
+      const transcript =
+        sttData.results?.[0]?.alternatives?.[0]?.transcript || "";
+
+      if (!transcript) {
+        throw new Error("No speech detected by API");
+      }
+
+      setTranscript(transcript);
+      setStatusMessage(`Processing: "${transcript}"`);
+
+      // Send to AI
+      setStatusMessage("Thinking about response...");
+      const aiResponse = await fetch(
+        "https://api.openai.com/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${OPENAI_API}`,
+            "Content-Type": "application/json",
+          },
           body: JSON.stringify({
-            config: {
-              encoding: "LINEAR16",
-              sampleRateHertz: 44100,
-              languageCode: "en-US",
-            },
-            audio: {
-              content: buffer,
-            },
+            model: "gpt-4o",
+            messages: [{ role: "user", content: transcript }],
+            stream: true, // Enable streaming response
           }),
         }
       );
-      const sttData = await sttRes.json();
-      const userText =
-        sttData.results?.[0]?.alternatives?.[0]?.transcript ?? "";
-      if (!userText) throw new Error("No speech detected");
 
-      console.log("User said:", userText);
+      if (!aiResponse.ok || !aiResponse.body) {
+        throw new Error("AI request failed");
+      }
 
-      // Step 2: Send to LLM (OpenAI)
-      const llmRes = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${OPENAI_API}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4",
-          messages: [{ role: "user", content: userText }],
-        }),
-      });
-      const llmData = await llmRes.json();
-      const replyText = llmData.choices?.[0]?.message?.content ?? "Sorry!";
+      const reader = aiResponse.body.getReader();
+      const decoder = new TextDecoder();
+      let aiText = "";
 
-      console.log("AI replied:", replyText);
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
 
-      // Step 3: TTS (Google)
-      const ttsRes = await fetch(
+        const chunk = decoder.decode(value);
+        const lines = chunk.split("\n").filter((line) => line.trim() !== "");
+
+        for (const line of lines) {
+          if (line.startsWith("data: ") && !line.includes("[DONE]")) {
+            const json = JSON.parse(line.replace("data: ", ""));
+            const content = json.choices[0]?.delta?.content || "";
+            aiText += content;
+            setAiResponse(aiText);
+            setStatusMessage(`AI: "${aiText.substring(0, 30)}..."`);
+          }
+        }
+      }
+
+      // Convert to speech
+      setStatusMessage("Generating speech...");
+      const ttsResponse = await fetch(
         `https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_TTS_API_KEY}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            input: { text: replyText },
-            voice: {
-              languageCode: "en-US",
-              name: "en-US-Wavenet-D", // high-quality WaveNet voice
-            },
-            audioConfig: {
-              audioEncoding: "MP3",
-            },
+            input: { text: aiText },
+            voice: { languageCode: "en-US", name: "en-US-Wavenet-D" },
+            audioConfig: { audioEncoding: "MP3" },
           }),
         }
       );
-      const ttsData = await ttsRes.json();
+
+      const ttsData = await ttsResponse.json();
       const audioBase64 = ttsData.audioContent;
 
-      const fileUri = FileSystem.cacheDirectory + "reply.mp3";
+      const fileUri = FileSystem.cacheDirectory + "response.mp3";
       await FileSystem.writeAsStringAsync(fileUri, audioBase64, {
         encoding: FileSystem.EncodingType.Base64,
       });
 
-      const { sound } = await Audio.Sound.createAsync({ uri: fileUri });
-      await sound.playAsync();
-    } catch (e: any) {
-      Alert.alert("Error", e.message ?? "Unknown error");
-      console.error("VoiceChat error", e);
-    } finally {
-      setIsProcessing(false);
+      // Play audio
+      setVoiceStatus("speaking");
+      setStatusMessage("Speaking...");
+
+      const { sound: playbackSound } = await Audio.Sound.createAsync({
+        uri: fileUri,
+      });
+      soundRef.current = playbackSound;
+
+      playbackSound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          setVoiceStatus("idle");
+          setStatusMessage("");
+        }
+      });
+
+      await playbackSound.playAsync();
+    } catch (error) {
+      console.error("Voice pipeline failed:", error);
+      setVoiceStatus("error");
+      // Provide a more user-friendly message
+      setStatusMessage(error.message || "Processing failed");
+      // Add a timeout to reset the button after an error
+      setTimeout(() => {
+        setVoiceStatus("idle");
+        setStatusMessage("");
+      }, 3000); // Reset after 3 seconds
     }
   };
+
+  // Cleanup audio resources
+  useEffect(() => {
+    return () => {
+      if (recordingRef.current) {
+        recordingRef.current.stopAndUnloadAsync();
+      }
+      if (soundRef.current) {
+        soundRef.current.unloadAsync();
+      }
+    };
+  }, []);
 
   return (
     <>
@@ -563,20 +748,68 @@ const ChatPage = () => {
               />
             </View> */}
 
-            <View style={styles.container}>
-              <TouchableOpacity
-                style={isRecording ? styles.stopBtn : styles.recordBtn}
-                onPress={isRecording ? runVoicePipeline : startRecording}
-                disabled={isProcessing}
-              >
-                <Text style={styles.btnText}>
-                  {isRecording ? "Stop & Talk to AI" : "Start Talking"}
+            <View style={styles.voiceStatusContainer}>
+              <View style={styles.statusRow}>
+                <Text style={styles.statusLabel}>Status:</Text>
+                <Text style={styles.statusText}>
+                  {statusMessage || "Ready"}
                 </Text>
-              </TouchableOpacity>
-              {isProcessing && (
-                <ActivityIndicator size="large" style={{ marginTop: 20 }} />
+              </View>
+
+              {partialTranscript ? (
+                <View style={styles.statusRow}>
+                  <Text style={styles.statusLabel}>Heard:</Text>
+                  <Text style={styles.transcriptText}>{partialTranscript}</Text>
+                </View>
+              ) : null}
+
+              {transcript ? (
+                <View style={styles.statusRow}>
+                  <Text style={styles.statusLabel}>You said:</Text>
+                  <Text style={styles.transcriptText}>{transcript}</Text>
+                </View>
+              ) : null}
+
+              {aiResponse ? (
+                <View style={styles.statusRow}>
+                  <Text style={styles.statusLabel}>AI Response:</Text>
+                  <Text style={styles.responseText}>
+                    {aiResponse.substring(0, 100)}
+                    {aiResponse.length > 100 ? "..." : ""}
+                  </Text>
+                </View>
+              ) : null}
+
+              {voiceStatus === "processing" && (
+                <ActivityIndicator size="small" color={colors.primary} />
               )}
             </View>
+
+            {/* Voice control button */}
+            <TouchableOpacity
+              style={[
+                styles.voiceButton,
+                voiceStatus === "listening" && styles.listeningButton,
+                voiceStatus === "processing" && styles.processingButton,
+                voiceStatus === "speaking" && styles.speakingButton,
+                voiceStatus === "error" && styles.errorButton,
+              ]}
+              onPressIn={handleVoicePressIn}
+              onPressOut={handleVoicePressOut}
+              disabled={
+                voiceStatus === "processing" || voiceStatus === "speaking"
+              }
+            >
+              {voiceStatus === "processing" ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Text style={styles.buttonText}>
+                  {voiceStatus === "listening"
+                    ? "Release to Process..."
+                    : "Press and Hold to Speak"}
+                </Text>
+              )}
+            </TouchableOpacity>
           </View>
         )}
       </View>
@@ -646,5 +879,72 @@ const themedStyles = (colors) =>
       fontSize: 18,
       fontWeight: "bold",
       color: "white",
+    },
+    voiceStatusContainer: {
+      padding: 16,
+      backgroundColor: colors.card,
+      borderRadius: 12,
+      margin: 16,
+    },
+    statusRow: {
+      flexDirection: "row",
+      marginBottom: 8,
+    },
+    statusLabel: {
+      fontWeight: "bold",
+      color: colors.text,
+      width: 90,
+    },
+    statusText: {
+      flex: 1,
+      color: colors.text,
+      fontStyle: "italic",
+    },
+    transcriptText: {
+      flex: 1,
+      color: colors.primary,
+    },
+    responseText: {
+      flex: 1,
+      color: colors.notification,
+    },
+    voiceButton: {
+      padding: 16,
+      borderRadius: 30,
+      backgroundColor: colors.primary,
+      alignItems: "center",
+      marginHorizontal: 40,
+      marginVertical: 20,
+      minHeight: 50,
+      justifyContent: "center",
+    },
+    listeningButton: {
+      backgroundColor: "#FF4136", // Red
+    },
+    processingButton: {
+      backgroundColor: "#FF851B", // Orange
+    },
+    speakingButton: {
+      backgroundColor: "#2ECC40", // Green
+    },
+    errorButton: {
+      backgroundColor: "#FF4136", // Red
+    },
+    buttonText: {
+      color: "white",
+      fontWeight: "bold",
+      fontSize: 16,
+    },
+    listeningIndicator: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    pulsingCircle: {
+      width: 12,
+      height: 12,
+      borderRadius: 6,
+      backgroundColor: "white",
+      marginRight: 10,
+      opacity: 0.7,
     },
   });
