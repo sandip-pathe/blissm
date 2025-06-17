@@ -88,9 +88,9 @@ if (!GCP_Project_API) {
 
 const RECORDING_OPTIONS: Audio.RecordingOptions = {
   android: {
-    extension: ".flac",
-    outputFormat: Audio.AndroidOutputFormat.DEFAULT, // FLAC is a self-contained format
-    audioEncoder: Audio.AndroidAudioEncoder.DEFAULT,
+    extension: ".awb",
+    outputFormat: Audio.AndroidOutputFormat.AMR_WB,
+    audioEncoder: Audio.AndroidAudioEncoder.AMR_WB,
     sampleRate: 16000,
     numberOfChannels: 1,
   },
@@ -98,7 +98,7 @@ const RECORDING_OPTIONS: Audio.RecordingOptions = {
     // Keep iOS as WAV/LINEAR16 as it's the most reliable there
     extension: ".wav",
     audioQuality: Audio.IOSAudioQuality.HIGH,
-    sampleRate: 16000,
+    sampleRate: 44100,
     numberOfChannels: 1,
     bitRate: 128000,
     linearPCMBitDepth: 16,
@@ -506,20 +506,19 @@ const ChatPage = () => {
       const sttConfig =
         Platform.OS === "android"
           ? {
-              // Android Config
-              encoding: "FLAC",
-              sampleRateHertz: 16000, // It's best to be explicit with FLAC
+              // We are now sending exactly what we promised: AMR_WB
+              encoding: "AMR_WB",
+              sampleRateHertz: 16000, // This is required for AMR_WB
               languageCode: "en-US",
-              enableAutomaticPunctuation: true,
             }
           : {
-              // iOS Config
+              // iOS is sending LINEAR16 as promised
               encoding: "LINEAR16",
               sampleRateHertz: 16000,
               languageCode: "en-US",
-              enableAutomaticPunctuation: true,
             };
 
+      // The rest of your fetch call and payload structure can remain the same.
       const sttPayload = {
         config: sttConfig,
         audio: {
@@ -577,38 +576,29 @@ const ChatPage = () => {
           body: JSON.stringify({
             model: "gpt-4o",
             messages: [{ role: "user", content: transcript }],
-            stream: true, // Enable streaming response
+            stream: false, // --- CRITICAL CHANGE: Disable streaming ---
           }),
         }
       );
 
-      if (!aiResponse.ok || !aiResponse.body) {
-        throw new Error("AI request failed");
+      // 3. Check for actual errors from the API
+      if (!aiResponse.ok) {
+        const errorBody = await aiResponse.text();
+        console.error("OpenAI API Error Response:", errorBody);
+        throw new Error(`AI request failed with status ${aiResponse.status}`);
       }
 
-      const reader = aiResponse.body.getReader();
-      const decoder = new TextDecoder();
-      let aiText = "";
+      // 4. Get the complete AI response in one go
+      const aiData = await aiResponse.json();
+      const aiText = aiData.choices[0]?.message?.content || "";
 
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
+      console.log("7. FULL AI RESPONSE TEXT:", aiText);
+      setAiResponse(aiText);
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split("\n").filter((line) => line.trim() !== "");
-
-        for (const line of lines) {
-          if (line.startsWith("data: ") && !line.includes("[DONE]")) {
-            const json = JSON.parse(line.replace("data: ", ""));
-            const content = json.choices[0]?.delta?.content || "";
-            aiText += content;
-            setAiResponse(aiText);
-            setStatusMessage(`AI: "${aiText.substring(0, 30)}..."`);
-          }
-        }
+      if (!aiText.trim()) {
+        throw new Error("AI returned an empty response.");
       }
 
-      // Convert to speech
       setStatusMessage("Generating speech...");
       const ttsResponse = await fetch(
         `https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_TTS_API_KEY}`,
